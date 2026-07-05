@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Get user role from custom claims
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+
+    // Helper: Check if user has admin role
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    // Helper: Check if user has manager role or higher
+    function isManagerOrAbove() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'manager');
+    }
+
+    // Helper: Check if user has viewer role or higher
+    function isViewerOrAbove() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'manager' || getUserRole() == 'viewer');
+    }
+
+    // Helper: Validate vendor document fields
+    function isValidVendor() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['name', 'vendorType', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 200
+        && data.vendorType is list
+        && data.vendorType.size() > 0;
+    }
+
+    // Helper: Ensure immutable fields are not changed on update
+    function preservesImmutableFields() {
+      return request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy;
+    }
+
+    // Vendors collection
+    match /vendors/{vendorId} {
+      // Read: Any authenticated user with viewer role or above
+      allow read: if isViewerOrAbove();
+
+      // Create: Manager or Admin, must pass validation
+      allow create: if isManagerOrAbove()
+        && isValidVendor()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      // Update: Manager or Admin, must preserve immutable fields
+      allow update: if isManagerOrAbove()
+        && isValidVendor()
+        && preservesImmutableFields()
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
+    // Users collection (profile data)
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+
+      // Admins can read all user profiles
+      allow read: if isAdmin();
+
+      // Users can update their own displayName only
+      allow update: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']);
+
+      // Admins can create and manage user profiles
+      allow create, update: if isAdmin();
+
+      // Admins can delete user profiles
+      allow delete: if isAdmin();
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
