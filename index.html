@@ -1273,16 +1273,36 @@
     // ═══════════════════════════════════════════════════════════════════
     // BOOT — /api/config → Firebase init → branding → render
     // ═══════════════════════════════════════════════════════════════════
+    const FALLBACK_CONFIG = {
+      apiKey: "AIzaSyC6C-qMBEMG19H3KKsvBnbfWlICJWVRCLe",
+      authDomain: "vendor-74bac.firebaseapp.com",
+      projectId: "vendor-74bac",
+      storageBucket: "vendor-74bac.firebasestorage.app",
+      messagingSenderId: "21579681434",
+      appId: "1:21579681434:web:ce4da24f6e2b9e5e7c9923",
+      measurementId: "G-KFNQN4JX4H"
+    };
+
     (async function () {
-      // 1. Fetch Firebase config from Vercel serverless function
+      // 1. Fetch Firebase config from Vercel serverless function with a fallback config
       let initError = null;
       try {
-        const res = await fetch('/api/config');
-        if (!res.ok) {
-          const body = await res.json().catch(()=>({}));
-          throw new Error(`/api/config returned ${res.status}: ${body.error||'Unknown error'}`);
+        let config = null;
+        try {
+          const res = await fetch('/api/config');
+          if (res.ok) {
+            config = await res.json();
+          } else {
+            console.warn('Firebase config API returned non-ok status, using fallback config');
+          }
+        } catch (fetchErr) {
+          console.warn('Failed to fetch Firebase config API, using fallback config:', fetchErr);
         }
-        const config = await res.json();
+
+        if (!config) {
+          config = FALLBACK_CONFIG;
+        }
+
         if (firebase.apps.length === 0) firebase.initializeApp(config);
       } catch(err) {
         initError = err.message;
