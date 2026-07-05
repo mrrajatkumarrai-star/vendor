@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vendor Management System</title>
   <meta name="description" content="Vendor Management System for Freight Forwarding Industry" />
+  <link id="favicon-link" rel="icon" type="image/x-icon" href="data:," />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -24,9 +25,6 @@
 
   <!-- SheetJS for Excel import/export -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
 
   <script>
     tailwind.config = {
@@ -50,11 +48,11 @@
           },
           fontSize: {
             '2xs': ['10px', { lineHeight: '14px' }],
-            'xs': ['11px', { lineHeight: '16px' }],
-            'sm': ['12px', { lineHeight: '18px' }],
-            'base': ['13px', { lineHeight: '20px' }],
-            'lg': ['14px', { lineHeight: '22px' }],
-            'xl': ['16px', { lineHeight: '24px' }],
+            'xs':  ['11px', { lineHeight: '16px' }],
+            'sm':  ['12px', { lineHeight: '18px' }],
+            'base':['13px', { lineHeight: '20px' }],
+            'lg':  ['14px', { lineHeight: '22px' }],
+            'xl':  ['16px', { lineHeight: '24px' }],
           },
         },
       },
@@ -71,69 +69,62 @@
     ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
     ::selection { background: #DBEAFE; color: #1E40AF; }
     input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
-    .fade-in { animation: fadeIn .15s ease-out; }
+    .fade-in  { animation: fadeIn .15s ease-out; }
     @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
     .slide-right { animation: slideR .2s ease-out; }
     @keyframes slideR { from { transform: translateX(100%) } to { transform: translateX(0) } }
+    .slide-up { animation: slideU .25s ease-out; }
+    @keyframes slideU { from { transform: translateY(100%) } to { transform: translateY(0) } }
     @keyframes spin { to { transform: rotate(360deg) } }
     .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .animate-pulse { animation: shimmer 1.6s ease-in-out infinite; }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
   <script type="text/babel" data-type="module">
-    // ═══════════════════════════════════════════════════════════════════
-    // CONSTANTS & CONFIG
-    // ═══════════════════════════════════════════════════════════════════
     const { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext, memo } = React;
 
-    const VENDOR_TYPES = ['Freight Forwarding', 'MLO', 'NVOCC', 'Transportation', 'CHA', 'Overseas Agent'];
-
+    // ═══════════════════════════════════════════════════════════════════
+    // CONSTANTS
+    // ═══════════════════════════════════════════════════════════════════
+    const VENDOR_TYPES = ['Freight Forwarding','MLO','NVOCC','Transportation','CHA','Overseas Agent'];
     const VENDOR_TYPE_COLORS = {
-      'Freight Forwarding': 'bg-blue-50 text-blue-700',
-      'MLO': 'bg-purple-50 text-purple-700',
-      'NVOCC': 'bg-teal-50 text-teal-700',
-      'Transportation': 'bg-amber-50 text-amber-700',
-      'CHA': 'bg-green-50 text-green-700',
-      'Overseas Agent': 'bg-indigo-50 text-indigo-700',
+      'Freight Forwarding':'bg-blue-50 text-blue-700',
+      'MLO':'bg-purple-50 text-purple-700',
+      'NVOCC':'bg-teal-50 text-teal-700',
+      'Transportation':'bg-amber-50 text-amber-700',
+      'CHA':'bg-green-50 text-green-700',
+      'Overseas Agent':'bg-indigo-50 text-indigo-700',
     };
-
     const COUNTRIES = [
       'India','United States','United Kingdom','United Arab Emirates','Singapore','China','Germany',
       'Netherlands','Japan','South Korea','Australia','Canada','France','Italy','Spain','Brazil',
       'Saudi Arabia','Malaysia','Thailand','Vietnam','Indonesia','Turkey','South Africa','Kenya',
       'Nigeria','Egypt','Bangladesh','Sri Lanka','Pakistan','Nepal','Hong Kong','Philippines',
     ];
-
     const INDIAN_STATES = [
       'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat',
       'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra',
       'Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim',
       'Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
     ];
-
     const PAGE_SIZE = 50;
-    const BATCH_SIZE = 500;
-
-    const EXPORT_HEADERS = [
-      'Vendor Name','Designation','Company','Vendor Type','Country','State','City',
-      'Location','Area Performing','Mobile','WhatsApp','Email','Website','GST','IEC','PAN','Tags','Notes'
-    ];
-
-    const EXPORT_KEYS = [
-      'name','designation','company','vendorType','country','state','city',
-      'location','areaPerforming','mobile','whatsapp','email','website','gst','iec','pan','tags','notes'
-    ];
+    const EXPORT_HEADERS = ['Vendor Name','Designation','Company','Vendor Type','Country','State','City','Location','Area Performing','Mobile','WhatsApp','Email','Website','GST','IEC','PAN','Tags','Notes'];
+    const EXPORT_KEYS    = ['name','designation','company','vendorType','country','state','city','location','areaPerforming','mobile','whatsapp','email','website','gst','iec','pan','tags','notes'];
 
     // ═══════════════════════════════════════════════════════════════════
-    // FIREBASE CONTEXT
+    // CONTEXTS
     // ═══════════════════════════════════════════════════════════════════
-    const FirebaseContext = createContext(null);
-    const AuthContext = createContext({ user: null, role: 'viewer', loading: true });
+    const AuthContext     = createContext({ user: null, role: 'viewer', onLogout: () => {} });
+    const BrandingContext = createContext({ appTitle:'Vendor Management', logoUrl:'', faviconUrl:'', contactEmail:'' });
+    const ToastContext    = createContext({ toast: () => {} });
 
-    function useFirebase() { return useContext(FirebaseContext); }
-    function useAuth() { return useContext(AuthContext); }
+    function useAuth()     { return useContext(AuthContext); }
+    function useBranding() { return useContext(BrandingContext); }
+    function useToast()    { return useContext(ToastContext); }
 
     // ═══════════════════════════════════════════════════════════════════
     // HELPERS
@@ -147,121 +138,86 @@
         if (lower.length >= 2) terms.add(lower);
         lower.split(/[\s,.\-]+/).forEach(w => { if (w.length >= 2) terms.add(w); });
       });
-      // prefix search for name
-      if (data.name) {
-        const n = data.name.toLowerCase().trim();
-        for (let i = 2; i <= Math.min(n.length, 10); i++) terms.add(n.slice(0, i));
-      }
+      if (data.name) { const n = data.name.toLowerCase().trim(); for (let i=2;i<=Math.min(n.length,10);i++) terms.add(n.slice(0,i)); }
       return [...terms].slice(0, 50);
     }
-
     function getInitials(name) {
       if (!name) return 'VN';
-      const parts = name.trim().split(/\s+/);
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return name.slice(0, 2).toUpperCase();
+      const p = name.trim().split(/\s+/);
+      return p.length >= 2 ? (p[0][0]+p[1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
     }
-
-    function whatsappUrl(num) {
-      if (!num) return '';
-      return 'https://wa.me/' + num.replace(/\D/g, '');
-    }
-
-    function timeAgo(ts) {
-      if (!ts) return '—';
-      const d = ts.toDate ? ts.toDate() : new Date(ts);
-      const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-      if (sec < 60) return 'just now';
-      if (sec < 3600) return Math.floor(sec/60) + 'm ago';
-      if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
-      return Math.floor(sec/86400) + 'd ago';
-    }
-
-    function debounce(fn, ms) {
-      let t;
-      return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-    }
-
+    function whatsappUrl(num) { return num ? 'https://wa.me/'+num.replace(/\D/g,'') : ''; }
     function validateEmail(e) { return !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
     function validatePhone(p) { return !p || /^\+?[\d\s\-]{7,15}$/.test(p); }
-    function validateGST(g) { return !g || /^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(g.toUpperCase()); }
-    function validatePAN(p) { return !p || /^[A-Z]{5}\d{4}[A-Z]$/.test(p.toUpperCase()); }
-    function validateIEC(i) { return !i || /^\d{10}$/.test(i); }
-
+    function validateGST(g)   { return !g || /^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(g.toUpperCase()); }
+    function validatePAN(p)   { return !p || /^[A-Z]{5}\d{4}[A-Z]$/.test(p.toUpperCase()); }
+    function validateIEC(i)   { return !i || /^\d{10}$/.test(i); }
     function copyToClipboard(text) {
       navigator.clipboard.writeText(text).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
+        const ta = document.createElement('textarea'); ta.value = text;
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
       });
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // ICON COMPONENT (SVG inline since Lucide CDN is icon-by-icon)
+    // ICON
     // ═══════════════════════════════════════════════════════════════════
-    function Icon({ name, size = 14, className = '' }) {
+    function Icon({ name, size=14, className='' }) {
       const icons = {
-        search: '<polyline points="21 21 16.65 16.65"/><circle cx="11" cy="11" r="8"/>',
-        plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-        x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
-        edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
-        trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
-        star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
-        phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
-        mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
-        globe: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
-        messageCircle: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
-        upload: '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
-        download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-        filter: '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
-        table: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>',
-        map: '<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>',
-        logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
-        settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-        copy: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-        chevronDown: '<polyline points="6 9 12 15 18 9"/>',
-        chevronLeft: '<polyline points="15 18 9 12 15 6"/>',
-        chevronRight: '<polyline points="9 18 15 12 9 6"/>',
-        building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22V6h6v16"/><line x1="8" y1="6" x2="8" y2="6"/><line x1="16" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/>',
-        mapPin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
-        loader: '<line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>',
-        alertTriangle: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-        check: '<polyline points="20 6 9 17 4 12"/>',
-        database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
-        shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
-        user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-        fileSpreadsheet: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="10" y2="21"/>',
-        arrowUpDown: '<line x1="12" y1="3" x2="12" y2="21"/><polyline points="8 7 12 3 16 7"/><polyline points="8 17 12 21 16 17"/>',
+        search:'<polyline points="21 21 16.65 16.65"/><circle cx="11" cy="11" r="8"/>',
+        plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+        x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+        edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+        trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+        star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+        phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+        mail:'<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+        globe:'<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+        messageCircle:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+        upload:'<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
+        download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+        filter:'<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
+        table:'<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>',
+        map:'<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>',
+        logOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+        settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+        copy:'<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        chevronLeft:'<polyline points="15 18 9 12 15 6"/>',
+        chevronRight:'<polyline points="9 18 15 12 9 6"/>',
+        building:'<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22V6h6v16"/>',
+        mapPin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+        loader:'<line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>',
+        alertTriangle:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+        check:'<polyline points="20 6 9 17 4 12"/>',
+        database:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+        shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+        fileSpreadsheet:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="10" y2="21"/>',
+        arrowUpDown:'<line x1="12" y1="3" x2="12" y2="21"/><polyline points="8 7 12 3 16 7"/><polyline points="8 17 12 21 16 17"/>',
+        wifiOff:'<line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>',
+        image:'<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
       };
-      const paths = icons[name] || '';
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{__html: paths}} />
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{__html: icons[name]||''}} />
       );
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // TOAST NOTIFICATION
+    // TOAST
     // ═══════════════════════════════════════════════════════════════════
-    const ToastContext = createContext({ toast: () => {} });
-    function useToast() { return useContext(ToastContext); }
-
     function ToastProvider({ children }) {
       const [toasts, setToasts] = useState([]);
-      const toast = useCallback((msg, type = 'info') => {
+      const toast = useCallback((msg, type='info') => {
         const id = Date.now();
         setToasts(t => [...t, { id, msg, type }]);
-        setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
+        setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500);
       }, []);
       return (
         <ToastContext.Provider value={{ toast }}>
           {children}
-          <div className="fixed bottom-4 right-4 z-[100] space-y-1.5">
+          <div className="fixed bottom-4 right-4 z-[100] space-y-1.5 w-72 max-w-[calc(100vw-2rem)]">
             {toasts.map(t => (
-              <div key={t.id} className={`fade-in px-3 py-2 rounded shadow-lg text-xs max-w-xs ${
-                t.type === 'error' ? 'bg-red-600 text-white' : t.type === 'success' ? 'bg-green-600 text-white' : 'bg-gray-800 text-white'
+              <div key={t.id} className={`fade-in px-3 py-2 rounded shadow-lg text-xs ${
+                t.type==='error' ? 'bg-red-600 text-white' : t.type==='success' ? 'bg-green-600 text-white' : 'bg-gray-800 text-white'
               }`}>{t.msg}</div>
             ))}
           </div>
@@ -269,58 +225,122 @@
       );
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // SKELETON LOADERS
+    // ═══════════════════════════════════════════════════════════════════
+    function SkeletonCard() {
+      return (
+        <div className="bg-white border border-border rounded p-2.5 animate-pulse">
+          <div className="flex items-start gap-2 mb-2">
+            <div className="w-7 h-7 rounded-full bg-gray-200 flex-shrink-0" />
+            <div className="flex-1 space-y-1">
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+              <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+            </div>
+          </div>
+          <div className="h-2.5 bg-gray-100 rounded w-full mb-1" />
+          <div className="h-2.5 bg-gray-100 rounded w-2/3 mb-2" />
+          <div className="flex gap-1 mb-2">
+            <div className="h-4 bg-gray-100 rounded-sm w-16" />
+            <div className="h-4 bg-gray-100 rounded-sm w-12" />
+          </div>
+          <div className="pt-1.5 border-t border-border flex gap-1">
+            <div className="w-5 h-5 bg-gray-100 rounded" />
+            <div className="w-5 h-5 bg-gray-100 rounded" />
+            <div className="w-5 h-5 bg-gray-100 rounded" />
+          </div>
+        </div>
+      );
+    }
 
+    function SkeletonRow() {
+      return (
+        <tr className="animate-pulse">
+          {[...Array(8)].map((_,i) => (
+            <td key={i} className="px-2 py-2 border-b border-border">
+              <div className="h-2.5 bg-gray-100 rounded" />
+            </td>
+          ))}
+        </tr>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ERROR SCREEN — shown when Firebase config fetch fails
+    // ═══════════════════════════════════════════════════════════════════
+    function ErrorScreen({ error }) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 text-center">
+          <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+            <Icon name="wifiOff" size={24} className="text-danger" />
+          </div>
+          <h1 className="text-lg font-bold text-foreground mb-1">Cannot Connect to Firebase</h1>
+          <p className="text-xs text-muted mb-4 max-w-sm">
+            The app could not load its configuration. Ensure Firebase environment variables are set in
+            the Vercel Dashboard under Settings → Environment Variables, then redeploy.
+          </p>
+          <div className="text-2xs font-mono bg-red-50 text-danger px-3 py-2 rounded border border-red-200 max-w-sm break-all">
+            {error}
+          </div>
+          <button onClick={() => window.location.reload()}
+            className="mt-4 px-4 h-8 text-xs bg-accent text-white rounded hover:bg-blue-700">
+            Retry
+          </button>
+        </div>
+      );
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // LOGIN SCREEN
     // ═══════════════════════════════════════════════════════════════════
-    function LoginScreen({ onLogin }) {
+    function LoginScreen({ onLogin, branding }) {
       const [pin, setPin] = useState('');
       const [error, setError] = useState('');
+      const [loading, setLoading] = useState(false);
 
-      const handleSubmit = (e) => {
+      const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
+        await new Promise(r => setTimeout(r, 350));
         if (pin === '9965') {
-          onLogin({ uid: 'local-admin', email: 'admin@local', displayName: 'Local Admin', role: 'admin' });
+          onLogin({ uid:'local-admin', email: branding.contactEmail||'admin@vendor', displayName:'Admin', role:'admin' });
         } else {
-          setError('Invalid PIN. Please enter correct PIN.');
+          setError('Invalid PIN. Please try again.');
         }
+        setLoading(false);
       };
 
       return (
         <div className="min-h-screen flex items-center justify-center bg-white px-4">
           <form onSubmit={handleSubmit} className="w-full max-w-[280px] space-y-4 text-center">
             <div className="mb-2">
-              <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center mx-auto mb-3">
-                <Icon name="shield" size={20} className="text-accent" />
-              </div>
-              <h1 className="text-lg font-bold text-foreground">Vendor Management</h1>
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto mx-auto mb-3 object-contain" />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center mx-auto mb-3">
+                  <Icon name="shield" size={20} className="text-accent" />
+                </div>
+              )}
+              <h1 className="text-lg font-bold text-foreground">{branding.appTitle||'Vendor Management'}</h1>
               <p className="text-2xs text-muted mt-0.5">Enter PIN to access the system</p>
             </div>
 
             {error && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 border border-red-200 rounded text-2xs text-danger justify-center animate-shake">
-                <Icon name="alertTriangle" size={12} />
-                {error}
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 border border-red-200 rounded text-2xs text-danger justify-center">
+                <Icon name="alertTriangle" size={12} />{error}
               </div>
             )}
 
-            <div>
-              <input
-                type="password"
-                maxLength={6}
-                value={pin}
-                onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="••••"
-                className="w-full text-center tracking-[1em] text-lg font-bold px-3 py-1.5 border border-border rounded focus:ring-1 focus:ring-accent focus:border-accent h-10"
-                autoFocus
-              />
-            </div>
+            <input type="password" maxLength={6} value={pin}
+              onChange={e => setPin(e.target.value.replace(/\D/g,''))} placeholder="••••"
+              className="w-full text-center tracking-[1em] text-lg font-bold px-3 py-1.5 border border-border rounded focus:ring-1 focus:ring-accent h-10"
+              autoFocus />
 
-            <button type="submit"
-              className="w-full h-8 bg-accent text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors">
-              Access System
+            <button type="submit" disabled={loading}
+              className="w-full h-8 bg-accent text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-1">
+              {loading && <Icon name="loader" size={12} className="animate-spin" />}
+              {loading ? 'Verifying...' : 'Access System'}
             </button>
           </form>
         </div>
@@ -328,175 +348,138 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // VENDOR FORM (Drawer)
+    // VENDOR FORM DRAWER
     // ═══════════════════════════════════════════════════════════════════
     function VendorFormDrawer({ isOpen, onClose, editVendor, onSave }) {
-      const defaultData = { name:'', designation:'', company:'', vendorType:[], country:'', state:'', city:'', location:'', areaPerforming:'', mobile:'', whatsapp:'', email:'', website:'', gst:'', iec:'', pan:'', tags:[], notes:'', isFavorite: false };
-      const [form, setForm] = useState(defaultData);
+      const def = { name:'',designation:'',company:'',vendorType:[],country:'',state:'',city:'',location:'',areaPerforming:'',mobile:'',whatsapp:'',email:'',website:'',gst:'',iec:'',pan:'',tags:[],notes:'',isFavorite:false };
+      const [form, setForm] = useState(def);
       const [errors, setErrors] = useState({});
       const [saving, setSaving] = useState(false);
       const [tagInput, setTagInput] = useState('');
 
       useEffect(() => {
-        if (editVendor) {
-          setForm({ ...defaultData, ...editVendor, vendorType: editVendor.vendorType || [] });
-        } else {
-          setForm(defaultData);
-        }
-        setErrors({});
-        setTagInput('');
+        setForm(editVendor ? { ...def, ...editVendor, vendorType: editVendor.vendorType||[] } : def);
+        setErrors({}); setTagInput('');
       }, [editVendor, isOpen]);
 
-      const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-      const toggleType = (type) => {
-        setForm(f => ({
-          ...f,
-          vendorType: f.vendorType.includes(type) ? f.vendorType.filter(t => t !== type) : [...f.vendorType, type]
-        }));
-      };
-
-      const addTag = () => {
-        const t = tagInput.trim();
-        if (t && !form.tags.includes(t)) { set('tags', [...form.tags, t]); setTagInput(''); }
-      };
+      const set = (k,v) => setForm(f=>({...f,[k]:v}));
+      const toggleType = (type) => setForm(f=>({...f,vendorType:f.vendorType.includes(type)?f.vendorType.filter(t=>t!==type):[...f.vendorType,type]}));
+      const addTag = () => { const t=tagInput.trim(); if(t&&!form.tags.includes(t)){set('tags',[...form.tags,t]);setTagInput('');} };
 
       const validate = () => {
         const e = {};
-        if (!form.name.trim()) e.name = 'Name is required';
-        if (form.vendorType.length === 0) e.vendorType = 'Select at least one type';
-        if (!validateEmail(form.email)) e.email = 'Invalid email';
-        if (!validatePhone(form.mobile)) e.mobile = 'Invalid phone';
-        if (!validatePhone(form.whatsapp)) e.whatsapp = 'Invalid number';
-        if (!validateGST(form.gst)) e.gst = 'Invalid GST (e.g. 22AAAAA0000A1Z5)';
-        if (!validatePAN(form.pan)) e.pan = 'Invalid PAN (e.g. ABCDE1234F)';
-        if (!validateIEC(form.iec)) e.iec = 'IEC must be 10 digits';
+        if (!form.name.trim()) e.name='Name is required';
+        if (form.vendorType.length===0) e.vendorType='Select at least one type';
+        if (!validateEmail(form.email)) e.email='Invalid email';
+        if (!validatePhone(form.mobile)) e.mobile='Invalid phone';
+        if (!validatePhone(form.whatsapp)) e.whatsapp='Invalid number';
+        if (!validateGST(form.gst)) e.gst='Invalid GST';
+        if (!validatePAN(form.pan)) e.pan='Invalid PAN';
+        if (!validateIEC(form.iec)) e.iec='IEC must be 10 digits';
         setErrors(e);
-        return Object.keys(e).length === 0;
+        return Object.keys(e).length===0;
       };
 
       const handleSave = async () => {
         if (!validate()) return;
         setSaving(true);
-        try {
-          await onSave(form, editVendor?.id);
-          onClose();
-        } catch(err) {
-          setErrors({ _form: err.message });
-        } finally {
-          setSaving(false);
-        }
+        try { await onSave(form, editVendor?.id); onClose(); }
+        catch(err) { setErrors({_form:err.message}); }
+        finally { setSaving(false); }
       };
 
       if (!isOpen) return null;
 
-      const Field = ({ label, field, type = 'text', required, half }) => (
-        <div className={half ? 'flex-1' : ''}>
-          <label className="text-2xs font-medium text-muted block mb-0.5">{label}{required && ' *'}</label>
-          <input type={type} value={form[field]||''} onChange={e => set(field, e.target.value)} placeholder={label}
-            className={`w-full px-2 py-1 text-xs border rounded h-7 focus:ring-1 focus:ring-accent focus:border-accent ${errors[field] ? 'border-danger' : 'border-border'}`} />
-          {errors[field] && <span className="text-2xs text-danger">{errors[field]}</span>}
+      const Field = ({label,field,type='text',required,half}) => (
+        <div className={half?'flex-1':''}>
+          <label className="text-2xs font-medium text-muted block mb-0.5">{label}{required&&' *'}</label>
+          <input type={type} value={form[field]||''} onChange={e=>set(field,e.target.value)} placeholder={label}
+            className={`w-full px-2 py-1 text-xs border rounded h-7 focus:ring-1 focus:ring-accent focus:border-accent ${errors[field]?'border-danger':'border-border'}`} />
+          {errors[field]&&<span className="text-2xs text-danger">{errors[field]}</span>}
         </div>
       );
-
-      const SelectField = ({ label, field, options, placeholder }) => (
+      const Sel = ({label,field,options,placeholder}) => (
         <div className="flex-1">
           <label className="text-2xs font-medium text-muted block mb-0.5">{label}</label>
-          <select value={form[field]||''} onChange={e => set(field, e.target.value)}
-            className="w-full px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent focus:border-accent appearance-none bg-white cursor-pointer">
-            <option value="">{placeholder || 'Select...'}</option>
-            {options.map(o => <option key={o} value={o}>{o}</option>)}
+          <select value={form[field]||''} onChange={e=>set(field,e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent appearance-none bg-white cursor-pointer">
+            <option value="">{placeholder||'Select...'}</option>
+            {options.map(o=><option key={o} value={o}>{o}</option>)}
           </select>
         </div>
       );
 
+      const Divider = ({label}) => <div className="text-2xs font-semibold text-muted uppercase tracking-wider pt-1 pb-0.5 border-b border-border">{label}</div>;
+
       return (
         <>
           <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
-          <div className="fixed top-0 right-0 h-full w-[460px] max-w-[90vw] bg-white shadow-xl z-50 flex flex-col slide-right">
+          <div className="fixed top-0 right-0 h-full w-full sm:w-[460px] bg-white shadow-xl z-50 flex flex-col slide-right">
             <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-              <h2 className="text-sm font-semibold">{editVendor ? 'Edit Vendor' : 'Add Vendor'}</h2>
-              <button onClick={onClose} className="p-1 rounded hover:bg-hover-bg text-muted"><Icon name="x" size={16} /></button>
+              <h2 className="text-sm font-semibold">{editVendor?'Edit Vendor':'Add Vendor'}</h2>
+              <button onClick={onClose} className="p-1 rounded hover:bg-hover-bg text-muted"><Icon name="x" size={16}/></button>
             </div>
-
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
               {errors._form && <div className="text-2xs text-danger bg-red-50 px-2 py-1 rounded">{errors._form}</div>}
-
-              <div className="text-2xs font-semibold text-muted uppercase tracking-wider pb-0.5 border-b border-border">Basic Info</div>
+              <Divider label="Basic Info" />
               <Field label="Vendor Name" field="name" required />
               <Field label="Designation" field="designation" />
               <Field label="Company" field="company" />
-
               <div>
                 <label className="text-2xs font-medium text-muted block mb-0.5">Vendor Type *</label>
                 <div className="flex flex-wrap gap-1">
-                  {VENDOR_TYPES.map(type => (
-                    <button key={type} type="button" onClick={() => toggleType(type)}
-                      className={`px-2 py-0.5 text-2xs rounded border transition-colors ${form.vendorType.includes(type) ? 'bg-accent text-white border-accent' : 'bg-white text-muted border-border hover:bg-hover-bg'}`}>
+                  {VENDOR_TYPES.map(type=>(
+                    <button key={type} type="button" onClick={()=>toggleType(type)}
+                      className={`px-2 py-0.5 text-2xs rounded border transition-colors ${form.vendorType.includes(type)?'bg-accent text-white border-accent':'bg-white text-muted border-border hover:bg-hover-bg'}`}>
                       {type}
                     </button>
                   ))}
                 </div>
-                {errors.vendorType && <span className="text-2xs text-danger">{errors.vendorType}</span>}
+                {errors.vendorType&&<span className="text-2xs text-danger">{errors.vendorType}</span>}
               </div>
-
-              <div className="text-2xs font-semibold text-muted uppercase tracking-wider pt-1 pb-0.5 border-b border-border">Location</div>
-              <div className="flex gap-2">
-                <SelectField label="Country" field="country" options={COUNTRIES} placeholder="Country" />
-                <SelectField label="State" field="state" options={INDIAN_STATES} placeholder="State" />
-              </div>
-              <div className="flex gap-2">
-                <Field label="City" field="city" half />
-                <Field label="Location" field="location" half />
-              </div>
+              <Divider label="Location" />
+              <div className="flex gap-2"><Sel label="Country" field="country" options={COUNTRIES} placeholder="Country"/><Sel label="State" field="state" options={INDIAN_STATES} placeholder="State"/></div>
+              <div className="flex gap-2"><Field label="City" field="city" half/><Field label="Location" field="location" half/></div>
               <Field label="Area Performing" field="areaPerforming" />
-
-              <div className="text-2xs font-semibold text-muted uppercase tracking-wider pt-1 pb-0.5 border-b border-border">Contact</div>
-              <div className="flex gap-2">
-                <Field label="Mobile" field="mobile" half />
-                <Field label="WhatsApp" field="whatsapp" half />
-              </div>
-              {form.whatsapp && <p className="text-2xs text-muted">WA URL: <a href={whatsappUrl(form.whatsapp)} target="_blank" className="text-accent hover:underline">{whatsappUrl(form.whatsapp)}</a></p>}
-              <Field label="Email" field="email" type="email" />
-              <Field label="Website" field="website" />
-
-              <div className="text-2xs font-semibold text-muted uppercase tracking-wider pt-1 pb-0.5 border-b border-border">Compliance</div>
-              <div className="flex gap-2">
-                <Field label="GST" field="gst" half />
-                <Field label="PAN" field="pan" half />
-              </div>
-              <Field label="IEC" field="iec" />
-
-              <div className="text-2xs font-semibold text-muted uppercase tracking-wider pt-1 pb-0.5 border-b border-border">Additional</div>
+              <Divider label="Contact" />
+              <div className="flex gap-2"><Field label="Mobile" field="mobile" half/><Field label="WhatsApp" field="whatsapp" half/></div>
+              {form.whatsapp&&<p className="text-2xs text-muted">WA: <a href={whatsappUrl(form.whatsapp)} target="_blank" className="text-accent hover:underline">{whatsappUrl(form.whatsapp)}</a></p>}
+              <Field label="Email" field="email" type="email"/>
+              <Field label="Website" field="website"/>
+              <Divider label="Compliance" />
+              <div className="flex gap-2"><Field label="GST" field="gst" half/><Field label="PAN" field="pan" half/></div>
+              <Field label="IEC" field="iec"/>
+              <Divider label="Additional" />
               <div>
                 <label className="text-2xs font-medium text-muted block mb-0.5">Notes</label>
-                <textarea value={form.notes||''} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Notes..."
-                  className="w-full px-2 py-1 text-xs border border-border rounded resize-y focus:ring-1 focus:ring-accent focus:border-accent min-h-[42px]" />
+                <textarea value={form.notes||''} onChange={e=>set('notes',e.target.value)} rows={2} placeholder="Notes..."
+                  className="w-full px-2 py-1 text-xs border border-border rounded resize-y focus:ring-1 focus:ring-accent min-h-[42px]" />
               </div>
               <div>
                 <label className="text-2xs font-medium text-muted block mb-0.5">Tags</label>
                 <div className="flex gap-1 mb-1">
-                  <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); }}} placeholder="Add tag" className="flex-1 px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent" />
+                  <input value={tagInput} onChange={e=>setTagInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addTag();}}}
+                    placeholder="Add tag + Enter" className="flex-1 px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent" />
+                  <button type="button" onClick={addTag} className="px-2 h-7 text-xs border border-border rounded hover:bg-hover-bg">Add</button>
                 </div>
-                {form.tags.length > 0 && (
+                {form.tags.length>0&&(
                   <div className="flex flex-wrap gap-1">
-                    {form.tags.map(tag => (
+                    {form.tags.map(tag=>(
                       <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-2xs bg-accent-light text-accent rounded">
-                        {tag}
-                        <button onClick={() => set('tags', form.tags.filter(t => t !== tag))} className="hover:text-blue-900"><Icon name="x" size={8} /></button>
+                        {tag}<button onClick={()=>set('tags',form.tags.filter(t=>t!==tag))}><Icon name="x" size={8}/></button>
                       </span>
                     ))}
                   </div>
                 )}
               </div>
             </div>
-
             <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-t border-border">
               <button onClick={onClose} className="px-3 h-7 text-xs border border-border rounded hover:bg-hover-bg">Cancel</button>
               <button onClick={handleSave} disabled={saving}
                 className="px-3 h-7 text-xs bg-accent text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1">
-                {saving && <Icon name="loader" size={10} className="animate-spin" />}
-                {editVendor ? 'Update' : 'Save'}
+                {saving&&<Icon name="loader" size={10} className="animate-spin"/>}
+                {editVendor?'Update':'Save'}
               </button>
             </div>
           </div>
@@ -514,141 +497,127 @@
       const [result, setResult] = useState(null);
       const [error, setError] = useState('');
 
-      useEffect(() => { if (isOpen) { setStep('upload'); setRows([]); setError(''); setResult(null); } }, [isOpen]);
+      useEffect(()=>{ if(isOpen){setStep('upload');setRows([]);setError('');setResult(null);} },[isOpen]);
 
       const handleFile = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const file = e.target.files[0]; if(!file) return;
         try {
           const data = await file.arrayBuffer();
-          const wb = XLSX.read(data, { type: 'array' });
+          const wb = XLSX.read(data,{type:'array'});
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
-          if (!json.length) { setError('File has no data rows'); return; }
-          // Normalize headers and validate
-          const validated = json.map((row, i) => {
-            const d = {};
-            Object.entries(row).forEach(([k, v]) => {
-              const keyMap = { 'vendor name':'name', 'vendor_name':'name', 'company name':'company', 'vendor type':'vendorType', 'vendor_type':'vendorType', 'area performing':'areaPerforming', 'area_performing':'areaPerforming', 'mobile number':'mobile', 'whatsapp number':'whatsapp', 'email address':'email', 'gst number':'gst', 'iec number':'iec', 'pan number':'pan' };
-              const nk = keyMap[k.toLowerCase().trim()] || k.toLowerCase().trim();
-              d[nk] = String(v||'').trim();
+          const json = XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+          if(!json.length){setError('File has no data rows');return;}
+          const validated = json.map((row,i)=>{
+            const d={};
+            Object.entries(row).forEach(([k,v])=>{
+              const km={'vendor name':'name','vendor_name':'name','company name':'company','vendor type':'vendorType','vendor_type':'vendorType','area performing':'areaPerforming','area_performing':'areaPerforming','mobile number':'mobile','whatsapp number':'whatsapp','email address':'email','gst number':'gst','iec number':'iec','pan number':'pan'};
+              d[km[k.toLowerCase().trim()]||k.toLowerCase().trim()]=String(v||'').trim();
             });
-            const errors = [];
-            if (!d.name) errors.push('Name required');
-            if (!d.vendortype && !d.vendorType) errors.push('Type required');
-            return { idx: i, data: d, errors, valid: errors.length === 0 };
+            const errs=[];
+            if(!d.name) errs.push('Name required');
+            if(!d.vendortype&&!d.vendorType) errs.push('Type required');
+            return {idx:i,data:d,errors:errs,valid:errs.length===0};
           });
-          setRows(validated);
-          setStep('preview');
-        } catch(err) { setError('Failed to parse file: ' + err.message); }
+          setRows(validated); setStep('preview');
+        } catch(err){setError('Failed to parse: '+err.message);}
       };
 
       const handleImport = async () => {
         setStep('importing');
-        const valid = rows.filter(r => r.valid);
-        let success = 0, fail = 0;
-        for (let i = 0; i < valid.length; i += BATCH_SIZE) {
-          const chunk = valid.slice(i, i + BATCH_SIZE);
-          try {
-            await onImport(chunk.map(r => r.data));
-            success += chunk.length;
-          } catch { fail += chunk.length; }
-          setProgress(Math.min(i + BATCH_SIZE, valid.length));
+        const valid=rows.filter(r=>r.valid); let success=0,fail=0;
+        for(let i=0;i<valid.length;i+=500){
+          const chunk=valid.slice(i,i+500);
+          try{await onImport(chunk.map(r=>r.data));success+=chunk.length;}
+          catch{fail+=chunk.length;}
+          setProgress(Math.min(i+500,valid.length));
         }
-        setResult({ success, fail });
-        setStep('complete');
+        setResult({success,fail}); setStep('complete');
       };
 
       const downloadTemplate = () => {
-        const ws = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ['John Smith','Manager','ABC Logistics','Freight Forwarding, CHA','India','Maharashtra','Mumbai','Andheri','Western India','+91 98765 43210','+91 98765 43210','john@abc.com','https://abc.com','27AAAAA0000A1Z5','0123456789','ABCDE1234F','freight, import','Key contact']]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Vendors');
-        XLSX.writeFile(wb, 'vendor_template.xlsx');
+        const ws=XLSX.utils.aoa_to_sheet([EXPORT_HEADERS,['John Smith','Manager','ABC Logistics','Freight Forwarding, CHA','India','Maharashtra','Mumbai','Andheri','Western India','+91 98765 43210','+91 98765 43210','john@abc.com','https://abc.com','27AAAAA0000A1Z5','0123456789','ABCDE1234F','freight, import','Key contact']]);
+        const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Vendors'); XLSX.writeFile(wb,'vendor_template.xlsx');
       };
 
-      if (!isOpen) return null;
-      const validCount = rows.filter(r => r.valid).length;
+      if(!isOpen) return null;
+      const validCount=rows.filter(r=>r.valid).length;
 
       return (
         <>
-          <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col fade-in">
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose}/>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[80vh] flex flex-col fade-in">
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
                 <h2 className="text-sm font-semibold">Import Vendors</h2>
-                <button onClick={onClose} className="p-1 rounded hover:bg-hover-bg text-muted"><Icon name="x" size={16} /></button>
+                <button onClick={onClose} className="p-1 rounded hover:bg-hover-bg text-muted"><Icon name="x" size={16}/></button>
               </div>
-
               <div className="flex-1 overflow-y-auto p-4">
-                {step === 'upload' && (
+                {step==='upload'&&(
                   <div className="text-center py-6 space-y-3">
-                    <Icon name="fileSpreadsheet" size={36} className="text-muted mx-auto" />
+                    <Icon name="fileSpreadsheet" size={36} className="text-muted mx-auto"/>
                     <div><p className="text-sm font-medium">Upload Excel or CSV</p><p className="text-2xs text-muted">.csv, .xls, .xlsx</p></div>
-                    {error && <p className="text-2xs text-danger">{error}</p>}
+                    {error&&<p className="text-2xs text-danger">{error}</p>}
                     <div className="flex justify-center gap-2">
                       <label className="cursor-pointer px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-blue-700 inline-flex items-center gap-1">
-                        <Icon name="upload" size={12} /> Choose File
-                        <input type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFile} />
+                        <Icon name="upload" size={12}/> Choose File
+                        <input type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFile}/>
                       </label>
                       <button onClick={downloadTemplate} className="px-3 py-1.5 text-xs border border-border rounded hover:bg-hover-bg inline-flex items-center gap-1">
-                        <Icon name="download" size={12} /> Template
+                        <Icon name="download" size={12}/> Template
                       </button>
                     </div>
                   </div>
                 )}
-
-                {step === 'preview' && (
+                {step==='preview'&&(
                   <div className="space-y-2">
                     <div className="flex gap-2 text-2xs">
                       <span className="px-1.5 py-0.5 bg-gray-100 rounded">{rows.length} rows</span>
                       <span className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded">{validCount} valid</span>
-                      {rows.length - validCount > 0 && <span className="px-1.5 py-0.5 bg-red-50 text-red-700 rounded">{rows.length - validCount} errors</span>}
+                      {rows.length-validCount>0&&<span className="px-1.5 py-0.5 bg-red-50 text-red-700 rounded">{rows.length-validCount} errors</span>}
                     </div>
-                    <div className="border border-border rounded overflow-auto max-h-[350px]">
+                    <div className="border border-border rounded overflow-auto max-h-[300px]">
                       <table className="w-full text-2xs">
                         <thead className="sticky top-0 bg-gray-50"><tr>
                           <th className="px-2 py-1 text-left font-semibold text-muted border-b border-border">#</th>
                           <th className="px-2 py-1 text-left font-semibold text-muted border-b border-border">Name</th>
-                          <th className="px-2 py-1 text-left font-semibold text-muted border-b border-border">Company</th>
-                          <th className="px-2 py-1 text-left font-semibold text-muted border-b border-border">Type</th>
+                          <th className="px-2 py-1 text-left font-semibold text-muted border-b border-border hidden sm:table-cell">Company</th>
+                          <th className="px-2 py-1 text-left font-semibold text-muted border-b border-border hidden sm:table-cell">Type</th>
                           <th className="px-2 py-1 text-left font-semibold text-muted border-b border-border">Status</th>
                         </tr></thead>
                         <tbody>
-                          {rows.slice(0, 100).map(r => (
-                            <tr key={r.idx} className={r.valid ? '' : 'bg-red-50'}>
+                          {rows.slice(0,100).map(r=>(
+                            <tr key={r.idx} className={r.valid?'':'bg-red-50'}>
                               <td className="px-2 py-1 border-b border-border">{r.idx+1}</td>
                               <td className="px-2 py-1 border-b border-border">{r.data.name}</td>
-                              <td className="px-2 py-1 border-b border-border">{r.data.company}</td>
-                              <td className="px-2 py-1 border-b border-border">{r.data.vendortype || r.data.vendorType}</td>
-                              <td className="px-2 py-1 border-b border-border">{r.valid ? <span className="text-success">✓</span> : <span className="text-danger">{r.errors.join(', ')}</span>}</td>
+                              <td className="px-2 py-1 border-b border-border hidden sm:table-cell">{r.data.company}</td>
+                              <td className="px-2 py-1 border-b border-border hidden sm:table-cell">{r.data.vendortype||r.data.vendorType}</td>
+                              <td className="px-2 py-1 border-b border-border">{r.valid?<span className="text-success">✓</span>:<span className="text-danger">{r.errors.join(', ')}</span>}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
-                      <button onClick={() => setStep('upload')} className="px-3 h-7 text-xs border border-border rounded hover:bg-hover-bg">Back</button>
+                      <button onClick={()=>setStep('upload')} className="px-3 h-7 text-xs border border-border rounded hover:bg-hover-bg">Back</button>
                       <button onClick={handleImport} disabled={validCount===0} className="px-3 h-7 text-xs bg-accent text-white rounded hover:bg-blue-700 disabled:opacity-50">Import {validCount} Vendors</button>
                     </div>
                   </div>
                 )}
-
-                {step === 'importing' && (
+                {step==='importing'&&(
                   <div className="text-center py-8 space-y-3">
-                    <Icon name="loader" size={28} className="animate-spin text-accent mx-auto" />
+                    <Icon name="loader" size={28} className="animate-spin text-accent mx-auto"/>
                     <p className="text-sm font-medium">Importing...</p>
                     <p className="text-2xs text-muted">{progress} of {rows.filter(r=>r.valid).length}</p>
                     <div className="w-48 mx-auto bg-gray-100 rounded-full h-1.5">
-                      <div className="bg-accent h-1.5 rounded-full transition-all" style={{width: `${rows.filter(r=>r.valid).length ? (progress/rows.filter(r=>r.valid).length)*100 : 0}%`}} />
+                      <div className="bg-accent h-1.5 rounded-full transition-all" style={{width:`${rows.filter(r=>r.valid).length?(progress/rows.filter(r=>r.valid).length)*100:0}%`}}/>
                     </div>
                   </div>
                 )}
-
-                {step === 'complete' && (
+                {step==='complete'&&(
                   <div className="text-center py-8 space-y-3">
-                    <Icon name="check" size={28} className="text-success mx-auto" />
+                    <Icon name="check" size={28} className="text-success mx-auto"/>
                     <p className="text-sm font-medium">Import Complete</p>
-                    <p className="text-2xs text-muted">{result?.success} imported{result?.fail ? `, ${result.fail} failed` : ''}</p>
+                    <p className="text-2xs text-muted">{result?.success} imported{result?.fail?`, ${result.fail} failed`:''}</p>
                     <button onClick={onClose} className="px-4 h-7 text-xs bg-accent text-white rounded hover:bg-blue-700">Done</button>
                   </div>
                 )}
@@ -664,7 +633,7 @@
     // ═══════════════════════════════════════════════════════════════════
     const VendorCard = memo(function VendorCard({ vendor, onEdit, onDelete, onToggleFav, canEdit, canDelete }) {
       return (
-        <div className="bg-white border border-border rounded p-2.5 hover:shadow-md transition-shadow group" style={{maxWidth: 280}}>
+        <div className="bg-white border border-border rounded p-2.5 hover:shadow-md transition-shadow group">
           <div className="flex items-start gap-2 mb-1">
             <div className="w-7 h-7 rounded-full bg-accent-light text-accent flex items-center justify-center text-2xs font-bold flex-shrink-0">
               {getInitials(vendor.name)}
@@ -672,27 +641,27 @@
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <span className="text-xs font-semibold truncate">{vendor.name}</span>
-                <button onClick={() => onToggleFav(vendor)} className={`flex-shrink-0 ${vendor.isFavorite ? 'text-amber-500' : 'text-gray-300 hover:text-amber-400'}`}>
-                  <Icon name="star" size={11} className={vendor.isFavorite ? 'fill-current' : ''} />
+                <button onClick={()=>onToggleFav(vendor)} className={`flex-shrink-0 ${vendor.isFavorite?'text-amber-500':'text-gray-300 hover:text-amber-400'}`}>
+                  <Icon name="star" size={11} className={vendor.isFavorite?'fill-current':''}/>
                 </button>
               </div>
-              {vendor.designation && <p className="text-2xs text-muted truncate">{vendor.designation}</p>}
+              {vendor.designation&&<p className="text-2xs text-muted truncate">{vendor.designation}</p>}
             </div>
           </div>
-          {vendor.company && <div className="flex items-center gap-1 text-2xs text-muted mb-0.5"><Icon name="building" size={10} /><span className="truncate">{vendor.company}</span></div>}
-          {(vendor.location || vendor.city || vendor.country) && <div className="flex items-center gap-1 text-2xs text-muted mb-1"><Icon name="mapPin" size={10} /><span className="truncate">{[vendor.location, vendor.city, vendor.country].filter(Boolean).join(', ')}</span></div>}
+          {vendor.company&&<div className="flex items-center gap-1 text-2xs text-muted mb-0.5"><Icon name="building" size={10}/><span className="truncate">{vendor.company}</span></div>}
+          {(vendor.location||vendor.city||vendor.country)&&<div className="flex items-center gap-1 text-2xs text-muted mb-1"><Icon name="mapPin" size={10}/><span className="truncate">{[vendor.location,vendor.city,vendor.country].filter(Boolean).join(', ')}</span></div>}
           <div className="flex flex-wrap gap-0.5 mb-1">
-            {(vendor.vendorType||[]).map(t => <span key={t} className={`inline-flex items-center px-1.5 py-0.5 text-2xs font-medium rounded-sm ${VENDOR_TYPE_COLORS[t]||'bg-gray-100 text-gray-700'}`}>{t}</span>)}
+            {(vendor.vendorType||[]).map(t=><span key={t} className={`inline-flex items-center px-1.5 py-0.5 text-2xs font-medium rounded-sm ${VENDOR_TYPE_COLORS[t]||'bg-gray-100 text-gray-700'}`}>{t}</span>)}
           </div>
-          {vendor.areaPerforming && <p className="text-2xs text-muted mb-1 truncate">Area: {vendor.areaPerforming}</p>}
+          {vendor.areaPerforming&&<p className="text-2xs text-muted mb-1 truncate">Area: {vendor.areaPerforming}</p>}
           <div className="flex items-center gap-1 pt-1.5 border-t border-border">
-            {vendor.mobile && <a href={`tel:${vendor.mobile}`} className="p-0.5 rounded hover:bg-hover-bg text-muted" title={vendor.mobile}><Icon name="phone" size={11} /></a>}
-            {vendor.whatsapp && <a href={whatsappUrl(vendor.whatsapp)} target="_blank" className="p-0.5 rounded hover:bg-hover-bg text-green-600" title="WhatsApp"><Icon name="messageCircle" size={11} /></a>}
-            {vendor.email && <a href={`mailto:${vendor.email}`} className="p-0.5 rounded hover:bg-hover-bg text-muted" title={vendor.email}><Icon name="mail" size={11} /></a>}
-            {vendor.website && <a href={vendor.website.startsWith('http') ? vendor.website : 'https://'+vendor.website} target="_blank" className="p-0.5 rounded hover:bg-hover-bg text-muted" title={vendor.website}><Icon name="globe" size={11} /></a>}
-            <div className="flex-1" />
-            {canEdit && <button onClick={() => onEdit(vendor)} className="p-0.5 rounded hover:bg-hover-bg text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Edit"><Icon name="edit" size={11} /></button>}
-            {canDelete && <button onClick={() => onDelete(vendor)} className="p-0.5 rounded hover:bg-hover-bg text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity" title="Delete"><Icon name="trash" size={11} /></button>}
+            {vendor.mobile&&<a href={`tel:${vendor.mobile}`} className="p-0.5 rounded hover:bg-hover-bg text-muted" title={vendor.mobile}><Icon name="phone" size={11}/></a>}
+            {vendor.whatsapp&&<a href={whatsappUrl(vendor.whatsapp)} target="_blank" className="p-0.5 rounded hover:bg-hover-bg text-green-600" title="WhatsApp"><Icon name="messageCircle" size={11}/></a>}
+            {vendor.email&&<a href={`mailto:${vendor.email}`} className="p-0.5 rounded hover:bg-hover-bg text-muted" title={vendor.email}><Icon name="mail" size={11}/></a>}
+            {vendor.website&&<a href={vendor.website.startsWith('http')?vendor.website:'https://'+vendor.website} target="_blank" className="p-0.5 rounded hover:bg-hover-bg text-muted" title={vendor.website}><Icon name="globe" size={11}/></a>}
+            <div className="flex-1"/>
+            {canEdit&&<button onClick={()=>onEdit(vendor)} className="p-0.5 rounded hover:bg-hover-bg text-muted hover:text-accent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><Icon name="edit" size={11}/></button>}
+            {canDelete&&<button onClick={()=>onDelete(vendor)} className="p-0.5 rounded hover:bg-hover-bg text-muted hover:text-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><Icon name="trash" size={11}/></button>}
           </div>
         </div>
       );
@@ -705,290 +674,274 @@
       const [sortCol, setSortCol] = useState('name');
       const [sortDir, setSortDir] = useState('asc');
 
-      const sorted = useMemo(() => {
-        return [...vendors].sort((a, b) => {
-          const av = a[sortCol] || '';
-          const bv = b[sortCol] || '';
-          const cmp = typeof av === 'string' ? av.localeCompare(bv) : 0;
-          return sortDir === 'asc' ? cmp : -cmp;
-        });
-      }, [vendors, sortCol, sortDir]);
+      const sorted = useMemo(()=>[...vendors].sort((a,b)=>{
+        const av=a[sortCol]||'', bv=b[sortCol]||'';
+        const cmp=typeof av==='string'?av.localeCompare(bv):0;
+        return sortDir==='asc'?cmp:-cmp;
+      }),[vendors,sortCol,sortDir]);
 
-      const toggleSort = (col) => {
-        if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-        else { setSortCol(col); setSortDir('asc'); }
-      };
+      const toggleSort = (col) => { if(sortCol===col)setSortDir(d=>d==='asc'?'desc':'asc'); else{setSortCol(col);setSortDir('asc');} };
+      const allSelected = vendors.length>0&&vendors.every(v=>selectedIds.has(v.id));
 
-      const allSelected = vendors.length > 0 && vendors.every(v => selectedIds.has(v.id));
-
-      const TH = ({ col, label, w }) => (
-        <th className="px-2 py-1.5 text-2xs font-semibold text-muted uppercase tracking-wider bg-gray-50 border-b border-border text-left select-none whitespace-nowrap cursor-pointer hover:text-foreground" style={{width: w}} onClick={() => toggleSort(col)}>
-          <div className="flex items-center gap-0.5">{label} <Icon name="arrowUpDown" size={9} className={sortCol===col ? 'text-accent' : 'text-gray-300'} /></div>
+      const TH = ({col,label,w}) => (
+        <th className="px-2 py-1.5 text-2xs font-semibold text-muted uppercase tracking-wider bg-gray-50 border-b border-border text-left select-none whitespace-nowrap cursor-pointer hover:text-foreground" style={{width:w}} onClick={()=>toggleSort(col)}>
+          <div className="flex items-center gap-0.5">{label}<Icon name="arrowUpDown" size={9} className={sortCol===col?'text-accent':'text-gray-300'}/></div>
         </th>
       );
 
-      if (loading && vendors.length === 0) return <div className="flex items-center justify-center h-full"><Icon name="loader" size={20} className="animate-spin text-accent" /></div>;
-      if (vendors.length === 0) return <div className="flex flex-col items-center justify-center h-full text-muted"><Icon name="table" size={32} className="mb-2 text-gray-300" /><p className="text-sm">No vendors found</p></div>;
+      if (loading && vendors.length === 0) return (
+        <div className="overflow-auto h-full"><table className="w-full text-xs"><tbody>{[...Array(8)].map((_,i)=><SkeletonRow key={i}/>)}</tbody></table></div>
+      );
+      if (vendors.length === 0) return (
+        <div className="flex flex-col items-center justify-center h-full text-muted">
+          <Icon name="table" size={28} className="mb-2 text-gray-300"/><p className="text-sm font-medium">No vendors found</p>
+        </div>
+      );
 
       return (
-        <div className="h-full flex flex-col">
-          <div className="flex-1 overflow-auto">
-            <table className="w-full border-collapse min-w-[1000px]">
-              <thead className="sticky top-0 z-10">
-                <tr>
-                  <th className="px-2 py-1.5 bg-gray-50 border-b border-border w-8">
-                    <input type="checkbox" checked={allSelected} onChange={() => onSelectAll(allSelected ? [] : vendors.map(v=>v.id))} className="w-3 h-3 rounded" />
-                  </th>
-                  <TH col="name" label="Vendor" w={180} />
-                  <TH col="company" label="Company" w={130} />
-                  <th className="px-2 py-1.5 text-2xs font-semibold text-muted uppercase bg-gray-50 border-b border-border text-left" style={{width:140}}>Type</th>
-                  <TH col="location" label="Location" w={130} />
-                  <TH col="country" label="Country" w={90} />
-                  <TH col="mobile" label="Phone" w={110} />
-                  <TH col="email" label="Email" w={160} />
-                  <th className="px-2 py-1.5 text-2xs font-semibold text-muted uppercase bg-gray-50 border-b border-border text-left w-16">WA</th>
-                  <TH col="updatedAt" label="Updated" w={80} />
-                  <th className="px-2 py-1.5 text-2xs font-semibold text-muted uppercase bg-gray-50 border-b border-border text-left w-16">Actions</th>
+        <div className="overflow-auto h-full">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr>
+                <th className="px-2 py-1.5 bg-gray-50 border-b border-border sticky left-0 z-10 w-8">
+                  <input type="checkbox" checked={allSelected} onChange={()=>allSelected?onSelectAll([]):onSelectAll(vendors.map(v=>v.id))} className="w-3 h-3 rounded"/>
+                </th>
+                <TH col="name" label="Name" w="140px"/>
+                <TH col="company" label="Company" w="120px"/>
+                <th className="px-2 py-1.5 text-2xs font-semibold text-muted uppercase tracking-wider bg-gray-50 border-b border-border text-left whitespace-nowrap">Type</th>
+                <TH col="country" label="Country" w="90px"/>
+                <TH col="city" label="City" w="80px"/>
+                <th className="px-2 py-1.5 text-2xs font-semibold text-muted uppercase tracking-wider bg-gray-50 border-b border-border text-left whitespace-nowrap">Contact</th>
+                <TH col="areaPerforming" label="Area" w="100px"/>
+                <th className="px-2 py-1.5 bg-gray-50 border-b border-border text-left text-2xs font-semibold text-muted uppercase whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(v=>(
+                <tr key={v.id} className={`hover:bg-hover-bg ${selectedIds.has(v.id)?'bg-accent-light':''}`}>
+                  <td className="px-2 py-1 border-b border-border sticky left-0 bg-white">
+                    <input type="checkbox" checked={selectedIds.has(v.id)} onChange={()=>onToggleSelect(v.id)} className="w-3 h-3 rounded"/>
+                  </td>
+                  <td className="px-2 py-1 border-b border-border whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+                      <button onClick={()=>onToggleFav(v)} className={`flex-shrink-0 ${v.isFavorite?'text-amber-500':'text-gray-300 hover:text-amber-400'}`}><Icon name="star" size={10} className={v.isFavorite?'fill-current':''}/></button>
+                      <span className="font-medium truncate max-w-[110px]">{v.name}</span>
+                    </div>
+                    {v.designation&&<div className="text-2xs text-muted truncate max-w-[110px]">{v.designation}</div>}
+                  </td>
+                  <td className="px-2 py-1 border-b border-border"><span className="truncate block max-w-[110px]">{v.company}</span></td>
+                  <td className="px-2 py-1 border-b border-border">
+                    <div className="flex flex-wrap gap-0.5 max-w-[160px]">
+                      {(v.vendorType||[]).map(t=><span key={t} className={`px-1 py-0.5 text-2xs rounded-sm ${VENDOR_TYPE_COLORS[t]||'bg-gray-100 text-gray-700'}`}>{t}</span>)}
+                    </div>
+                  </td>
+                  <td className="px-2 py-1 border-b border-border text-muted whitespace-nowrap">{v.country}</td>
+                  <td className="px-2 py-1 border-b border-border text-muted whitespace-nowrap">{v.city}</td>
+                  <td className="px-2 py-1 border-b border-border">
+                    <div className="flex items-center gap-1">
+                      {v.mobile&&<a href={`tel:${v.mobile}`} className="text-muted hover:text-foreground" title={v.mobile}><Icon name="phone" size={11}/></a>}
+                      {v.whatsapp&&<a href={whatsappUrl(v.whatsapp)} target="_blank" className="text-green-600" title="WhatsApp"><Icon name="messageCircle" size={11}/></a>}
+                      {v.email&&<a href={`mailto:${v.email}`} className="text-muted hover:text-accent" title={v.email}><Icon name="mail" size={11}/></a>}
+                    </div>
+                  </td>
+                  <td className="px-2 py-1 border-b border-border text-muted"><span className="truncate block max-w-[90px]">{v.areaPerforming}</span></td>
+                  <td className="px-2 py-1 border-b border-border whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+                      {canEdit&&<button onClick={()=>onEdit(v)} className="p-0.5 rounded hover:bg-hover-bg text-muted hover:text-accent"><Icon name="edit" size={11}/></button>}
+                      {canDelete&&<button onClick={()=>onDelete(v)} className="p-0.5 rounded hover:bg-hover-bg text-muted hover:text-danger"><Icon name="trash" size={11}/></button>}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {sorted.map(v => (
-                  <tr key={v.id} className={`hover:bg-hover-bg transition-colors ${selectedIds.has(v.id) ? 'bg-accent-light' : ''}`}>
-                    <td className="px-2 py-1.5 border-b border-border"><input type="checkbox" checked={selectedIds.has(v.id)} onChange={() => onToggleSelect(v.id)} className="w-3 h-3 rounded" /></td>
-                    <td className="px-2 py-1.5 border-b border-border">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-accent-light text-accent flex items-center justify-center text-2xs font-bold flex-shrink-0">{getInitials(v.name)}</div>
-                        <div className="min-w-0"><div className="text-xs font-medium truncate">{v.name}</div>{v.designation && <div className="text-2xs text-muted truncate">{v.designation}</div>}</div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-1.5 border-b border-border text-xs truncate">{v.company || '—'}</td>
-                    <td className="px-2 py-1.5 border-b border-border"><div className="flex flex-wrap gap-0.5">{(v.vendorType||[]).map(t => <span key={t} className={`px-1 py-0 text-2xs rounded ${VENDOR_TYPE_COLORS[t]||'bg-gray-100'}`}>{t}</span>)}</div></td>
-                    <td className="px-2 py-1.5 border-b border-border text-xs truncate">{[v.location, v.city].filter(Boolean).join(', ')||'—'}</td>
-                    <td className="px-2 py-1.5 border-b border-border text-xs truncate">{v.country||'—'}</td>
-                    <td className="px-2 py-1.5 border-b border-border text-xs">{v.mobile ? <a href={`tel:${v.mobile}`} className="text-accent hover:underline">{v.mobile}</a> : '—'}</td>
-                    <td className="px-2 py-1.5 border-b border-border text-xs truncate">{v.email ? <a href={`mailto:${v.email}`} className="text-accent hover:underline">{v.email}</a> : '—'}</td>
-                    <td className="px-2 py-1.5 border-b border-border">{v.whatsapp ? <a href={whatsappUrl(v.whatsapp)} target="_blank" className="text-green-600"><Icon name="messageCircle" size={12} /></a> : '—'}</td>
-                    <td className="px-2 py-1.5 border-b border-border text-2xs text-muted">{timeAgo(v.updatedAt)}</td>
-                    <td className="px-2 py-1.5 border-b border-border">
-                      <div className="flex items-center gap-0.5">
-                        <button onClick={() => onToggleFav(v)} className={v.isFavorite ? 'text-amber-500' : 'text-gray-300 hover:text-amber-400'}><Icon name="star" size={11} className={v.isFavorite?'fill-current':''} /></button>
-                        {canEdit && <button onClick={() => onEdit(v)} className="text-muted hover:text-accent"><Icon name="edit" size={11} /></button>}
-                        {canDelete && <button onClick={() => onDelete(v)} className="text-muted hover:text-danger"><Icon name="trash" size={11} /></button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PAGINATION BAR
+    // ═══════════════════════════════════════════════════════════════════
+    function PaginationBar({ total, page, pageSize, onChange }) {
+      const totalPages = Math.ceil(total/pageSize);
+      if (totalPages <= 1) return null;
+      const start = page*pageSize+1;
+      const end   = Math.min((page+1)*pageSize, total);
+      return (
+        <div className="flex items-center justify-between px-3 py-1.5 border-t border-border bg-white flex-shrink-0 flex-wrap gap-2">
+          <span className="text-2xs text-muted">Showing {start}–{end} of {total} vendors</span>
+          <div className="flex items-center gap-1">
+            <button onClick={()=>onChange(0)} disabled={page===0} className="px-1.5 h-6 text-2xs border border-border rounded hover:bg-hover-bg disabled:opacity-40">«</button>
+            <button onClick={()=>onChange(page-1)} disabled={page===0} className="px-1.5 h-6 text-2xs border border-border rounded hover:bg-hover-bg disabled:opacity-40 flex items-center"><Icon name="chevronLeft" size={10}/></button>
+            <span className="px-2 h-6 flex items-center text-2xs font-medium border border-accent bg-accent-light text-accent rounded">{page+1}/{totalPages}</span>
+            <button onClick={()=>onChange(page+1)} disabled={page>=totalPages-1} className="px-1.5 h-6 text-2xs border border-border rounded hover:bg-hover-bg disabled:opacity-40 flex items-center"><Icon name="chevronRight" size={10}/></button>
+            <button onClick={()=>onChange(totalPages-1)} disabled={page>=totalPages-1} className="px-1.5 h-6 text-2xs border border-border rounded hover:bg-hover-bg disabled:opacity-40">»</button>
           </div>
         </div>
       );
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // LOCAL STORAGE DATABASE HELPERS
+    // BRANDING SETTINGS MODAL — Admin only, saves to Firestore
     // ═══════════════════════════════════════════════════════════════════
-    const getLocalVendors = () => {
-      const data = localStorage.getItem('vms_vendors');
-      if (!data) {
-        // Pre-populate with high quality sample data for freight forwarding industry
-        const samples = [
-          {
-            id: 'sample-1',
-            name: 'John Smith',
-            designation: 'General Manager',
-            company: 'Oceanic Logistics Ltd',
-            vendorType: ['Freight Forwarding', 'CHA'],
-            country: 'India',
-            state: 'Maharashtra',
-            city: 'Mumbai',
-            location: 'Andheri East',
-            areaPerforming: 'Western India',
-            mobile: '+91 98765 43210',
-            whatsapp: '+91 98765 43210',
-            email: 'john.smith@oceanic.com',
-            website: 'www.oceaniclogistics.com',
-            gst: '27AAAAA0000A1Z5',
-            iec: '0123456789',
-            pan: 'ABCDE1234F',
-            tags: ['freight', 'mumbai', 'preferred'],
-            notes: 'Key contact for Mumbai FCL custom clearance operations.',
-            isFavorite: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'sample-2',
-            name: 'Amit Patel',
-            designation: 'Operations Lead',
-            company: 'Gujarat Roadways',
-            vendorType: ['Transportation'],
-            country: 'India',
-            state: 'Gujarat',
-            city: 'Ahmedabad',
-            location: 'Sarkhej',
-            areaPerforming: 'North & West India',
-            mobile: '+91 91234 56789',
-            whatsapp: '+91 91234 56789',
-            email: 'operations@gujroadways.com',
-            website: 'www.gujroadways.com',
-            gst: '24BBBBB1111B2Z6',
-            iec: '9876543210',
-            pan: 'FGHIJ5678K',
-            tags: ['transport', 'gujarat'],
-            notes: 'Owns a fleet of 50+ flatbed and container trailers.',
-            isFavorite: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        localStorage.setItem('vms_vendors', JSON.stringify(samples));
-        return samples;
-      }
-      try {
-        return JSON.parse(data);
-      } catch (_) {
-        return [];
-      }
-    };
+    function BrandingSettingsModal({ isOpen, onClose, onSaved }) {
+      const { toast } = useToast();
+      const currentBranding = useBranding();
+      const [form, setForm] = useState({ appTitle:'', logoUrl:'', faviconUrl:'', contactEmail:'' });
+      const [saving, setSaving] = useState(false);
 
-    const saveLocalVendors = (vendors) => {
-      localStorage.setItem('vms_vendors', JSON.stringify(vendors));
-    };
+      useEffect(()=>{ if(isOpen) setForm({...currentBranding}); },[isOpen]);
 
-    // ═══════════════════════════════════════════════════════════════════
-    // DATABASE SETTINGS MODAL (Option to configure Firebase)
-    // ═══════════════════════════════════════════════════════════════════
-    function DatabaseSettingsModal({ isOpen, onClose, onSave }) {
-      const [config, setConfig] = useState(() => {
-        const saved = localStorage.getItem('vms_firebase_config');
-        if (saved) return JSON.parse(saved);
-        return { apiKey: '', authDomain: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '' };
-      });
-      const [enabled, setEnabled] = useState(() => {
-        return localStorage.getItem('vms_firebase_enabled') === 'true';
-      });
-      const [error, setError] = useState('');
-      const [testing, setTesting] = useState(false);
-
-      const fields = [
-        { key: 'apiKey', label: 'API Key', placeholder: 'AIzaSy...' },
-        { key: 'authDomain', label: 'Auth Domain', placeholder: 'your-project.firebaseapp.com' },
-        { key: 'projectId', label: 'Project ID', placeholder: 'your-project-id' },
-        { key: 'storageBucket', label: 'Storage Bucket', placeholder: 'your-project.appspot.com' },
-        { key: 'messagingSenderId', label: 'Messaging Sender ID', placeholder: '123456789' },
-        { key: 'appId', label: 'App ID', placeholder: '1:123456789:web:abc123' },
-      ];
-
-      const handlePasteConfig = async () => {
-        try {
-          const text = await navigator.clipboard.readText();
-          const match = text.match(/apiKey\s*:\s*["']([^"']+)["']/);
-          if (match) {
-            const extract = (key) => { const m = text.match(new RegExp(key + `\\s*:\\s*["']([^"']+)["']`)); return m ? m[1] : ''; };
-            setConfig({
-              apiKey: extract('apiKey'),
-              authDomain: extract('authDomain'),
-              projectId: extract('projectId'),
-              storageBucket: extract('storageBucket'),
-              messagingSenderId: extract('messagingSenderId'),
-              appId: extract('appId'),
-            });
-          }
-        } catch (_) {}
-      };
+      const set = (k,v) => setForm(f=>({...f,[k]:v}));
 
       const handleSave = async () => {
-        setError('');
-        if (enabled) {
-          if (!config.apiKey || !config.authDomain || !config.projectId) {
-            setError('API Key, Auth Domain, and Project ID are required.');
-            return;
-          }
-          setTesting(true);
-          try {
-            // Clean up existing app instance before re-initializing
-            if (firebase.apps.length > 0) {
-              await firebase.app().delete();
-            }
-            firebase.initializeApp(config);
-            const db = firebase.firestore();
-            // Test read
-            await db.collection('_test_connection').doc('ping').get().catch(() => {});
-            
-            localStorage.setItem('vms_firebase_config', JSON.stringify(config));
-            localStorage.setItem('vms_firebase_enabled', 'true');
-            onSave(true);
-            onClose();
-          } catch (err) {
-            setError('Connection failed: ' + (err.message || 'Check credentials'));
-            try { if (firebase.apps.length > 0) await firebase.app().delete(); } catch(_) {}
-          } finally {
-            setTesting(false);
-          }
-        } else {
-          localStorage.setItem('vms_firebase_enabled', 'false');
-          onSave(false);
+        setSaving(true);
+        try {
+          const db = firebase.firestore();
+          await db.collection('app_settings').doc('branding').set({
+            appTitle:      form.appTitle      || 'Vendor Management',
+            logoUrl:       form.logoUrl       || '',
+            faviconUrl:    form.faviconUrl    || '',
+            contactEmail:  form.contactEmail  || '',
+            updatedAt:     firebase.firestore.FieldValue.serverTimestamp(),
+          });
+          toast('Branding saved permanently to Firebase','success');
+          onSaved({...form});
           onClose();
-        }
+        } catch(err){ toast('Save failed: '+err.message,'error'); }
+        finally { setSaving(false); }
       };
 
       if (!isOpen) return null;
 
       return (
         <>
-          <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-sm flex flex-col fade-in">
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose}/>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:max-w-sm fade-in">
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                <h2 className="text-sm font-semibold">Database Settings</h2>
-                <button onClick={onClose} className="p-1 rounded hover:bg-hover-bg text-muted"><Icon name="x" size={16} /></button>
+                <div className="flex items-center gap-1.5">
+                  <Icon name="settings" size={14} className="text-muted"/>
+                  <h2 className="text-sm font-semibold">Branding Settings</h2>
+                </div>
+                <button onClick={onClose} className="p-1 rounded hover:bg-hover-bg text-muted"><Icon name="x" size={16}/></button>
               </div>
               <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-border">
-                  <div>
-                    <span className="text-xs font-semibold text-foreground block">Enable Firebase Sync</span>
-                    <span className="text-2xs text-muted">Sync data with your cloud Firestore db</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={enabled}
-                    onChange={e => setEnabled(e.target.checked)}
-                    className="w-4 h-4 text-accent border-border rounded focus:ring-accent"
-                  />
+                <p className="text-2xs text-muted bg-blue-50 border border-blue-100 rounded px-2.5 py-1.5">
+                  Settings saved to Firebase apply to <strong>all users permanently</strong>. Favicon and logo load on next login.
+                </p>
+                <div>
+                  <label className="text-2xs font-medium text-muted block mb-0.5">App / Site Title</label>
+                  <input type="text" value={form.appTitle} onChange={e=>set('appTitle',e.target.value)} placeholder="Vendor Management System"
+                    className="w-full px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent"/>
                 </div>
-
-                {enabled && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xs font-semibold text-muted uppercase">Firebase Configuration</span>
-                      <button onClick={handlePasteConfig} className="text-2xs text-accent hover:underline flex items-center gap-0.5">
-                        <Icon name="copy" size={10} /> Paste Config
-                      </button>
+                <div>
+                  <label className="text-2xs font-medium text-muted block mb-0.5">Contact Email (shown in header)</label>
+                  <input type="email" value={form.contactEmail} onChange={e=>set('contactEmail',e.target.value)} placeholder="admin@company.com"
+                    className="w-full px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent"/>
+                </div>
+                <div>
+                  <label className="text-2xs font-medium text-muted block mb-0.5">Logo URL</label>
+                  <input type="url" value={form.logoUrl} onChange={e=>set('logoUrl',e.target.value)} placeholder="https://example.com/logo.png"
+                    className="w-full px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent"/>
+                  {form.logoUrl&&(
+                    <div className="mt-1.5 p-2 border border-border rounded bg-gray-50 flex items-center gap-2">
+                      <img src={form.logoUrl} alt="Logo preview" className="h-8 w-auto object-contain" onError={e=>e.target.style.display='none'}/>
+                      <span className="text-2xs text-muted">Preview</span>
                     </div>
-                    {fields.map(f => (
-                      <div key={f.key}>
-                        <label className="text-2xs font-medium text-muted block mb-0.5">{f.label}</label>
-                        <input
-                          type="text"
-                          value={config[f.key]}
-                          onChange={e => setConfig({...config, [f.key]: e.target.value})}
-                          placeholder={f.placeholder}
-                          className="w-full px-2 py-1 text-xs border border-border rounded bg-white text-foreground placeholder:text-gray-300 focus:ring-1 focus:ring-accent focus:border-accent h-7"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                  )}
+                </div>
+                <div>
+                  <label className="text-2xs font-medium text-muted block mb-0.5">Favicon URL</label>
+                  <input type="url" value={form.faviconUrl} onChange={e=>set('faviconUrl',e.target.value)} placeholder="https://example.com/favicon.ico"
+                    className="w-full px-2 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent"/>
+                </div>
+                <div className="flex justify-end gap-2 pt-1 border-t border-border">
                   <button onClick={onClose} className="px-3 h-7 text-xs border border-border rounded hover:bg-hover-bg">Cancel</button>
-                  <button onClick={handleSave} disabled={testing} className="px-3 h-7 text-xs bg-accent text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1">
-                    {testing && <Icon name="loader" size={10} className="animate-spin" />}
-                    Save Config
+                  <button onClick={handleSave} disabled={saving}
+                    className="px-3 h-7 text-xs bg-accent text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1">
+                    {saving&&<Icon name="loader" size={10} className="animate-spin"/>}
+                    Save Branding
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FILTER CONTENT — shared between desktop sidebar & mobile sheet
+    // ═══════════════════════════════════════════════════════════════════
+    function FilterContent({ filters, setFilter }) {
+      const [tagInput, setTagInput] = useState('');
+      return (
+        <div className="space-y-3 px-3 py-2">
+          <div>
+            <div className="text-2xs font-semibold text-muted uppercase mb-1">Vendor Type</div>
+            {VENDOR_TYPES.map(t=>(
+              <label key={t} className="flex items-center gap-1.5 py-0.5 text-xs cursor-pointer hover:text-accent">
+                <input type="checkbox" checked={filters.vendorType.includes(t)} onChange={()=>setFilter('vendorType',filters.vendorType.includes(t)?filters.vendorType.filter(x=>x!==t):[...filters.vendorType,t])} className="w-3 h-3 rounded"/>
+                <span className={filters.vendorType.includes(t)?'font-medium text-foreground':'text-muted'}>{t}</span>
+              </label>
+            ))}
+          </div>
+          <div>
+            <div className="text-2xs font-semibold text-muted uppercase mb-1">Country</div>
+            <select value={filters.country} onChange={e=>setFilter('country',e.target.value)} className="w-full px-2 py-1 text-xs border border-border rounded h-7 appearance-none bg-white">
+              <option value="">All</option>{COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="text-2xs font-semibold text-muted uppercase mb-1">State</div>
+            <select value={filters.state} onChange={e=>setFilter('state',e.target.value)} className="w-full px-2 py-1 text-xs border border-border rounded h-7 appearance-none bg-white">
+              <option value="">All</option>{INDIAN_STATES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          {[['city','City'],['location','Location'],['areaPerforming','Area'],['company','Company']].map(([k,lbl])=>(
+            <div key={k}>
+              <div className="text-2xs font-semibold text-muted uppercase mb-1">{lbl}</div>
+              <input value={filters[k]} onChange={e=>setFilter(k,e.target.value)} placeholder={lbl} className="w-full px-2 py-1 text-xs border border-border rounded h-7"/>
+            </div>
+          ))}
+          <div>
+            <div className="text-2xs font-semibold text-muted uppercase mb-1">Tags</div>
+            <input value={tagInput} onChange={e=>setTagInput(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();const t=tagInput.trim();if(t&&!filters.tags.includes(t))setFilter('tags',[...filters.tags,t]);setTagInput('');}}}
+              placeholder="Type tag + Enter" className="w-full px-2 py-1 text-xs border border-border rounded h-7"/>
+            {filters.tags.length>0&&<div className="flex flex-wrap gap-1 mt-1">{filters.tags.map(t=><span key={t} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-2xs bg-accent-light text-accent rounded">{t}<button onClick={()=>setFilter('tags',filters.tags.filter(x=>x!==t))}><Icon name="x" size={8}/></button></span>)}</div>}
+          </div>
+          <div>
+            <div className="text-2xs font-semibold text-muted uppercase mb-1">Favorites</div>
+            <button onClick={()=>setFilter('isFavorite',filters.isFavorite===true?null:true)}
+              className={`flex items-center gap-1 px-2 py-1 text-xs rounded border ${filters.isFavorite===true?'bg-amber-50 border-amber-200 text-amber-700':'bg-white border-border text-muted hover:bg-hover-bg'}`}>
+              <Icon name="star" size={11} className={filters.isFavorite===true?'fill-current':''}/> Favorites Only
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // MOBILE FILTER BOTTOM SHEET
+    // ═══════════════════════════════════════════════════════════════════
+    function MobileFilterSheet({ isOpen, onClose, filters, setFilter, filterCount }) {
+      if (!isOpen) return null;
+      return (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40 sm:hidden" onClick={onClose}/>
+          <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white rounded-t-2xl shadow-2xl max-h-[80vh] flex flex-col slide-up">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-sm font-semibold">Filters{filterCount>0?` (${filterCount})`:''}</span>
+              <div className="flex items-center gap-2">
+                {filterCount>0&&<button onClick={()=>setFilter('_clear')} className="text-2xs text-accent hover:underline">Clear All</button>}
+                <button onClick={onClose} className="p-1 rounded hover:bg-hover-bg text-muted"><Icon name="x" size={16}/></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto"><FilterContent filters={filters} setFilter={setFilter}/></div>
+            <div className="px-4 py-3 border-t border-border">
+              <button onClick={onClose} className="w-full h-9 bg-accent text-white text-xs font-medium rounded hover:bg-blue-700">Apply Filters</button>
             </div>
           </div>
         </>
@@ -1001,526 +954,362 @@
     function MainApp() {
       const { user, role, onLogout } = useAuth();
       const { toast } = useToast();
+      const brandingCtx = useBranding();
 
-      const canEdit = role === 'admin' || role === 'manager';
+      const canEdit   = role === 'admin' || role === 'manager';
       const canDelete = role === 'admin';
 
-      // State
-      const [vendors, setVendors] = useState([]);
-      const [loading, setLoading] = useState(true);
-      const [searchQuery, setSearchQuery] = useState('');
-      const [view, setView] = useState('cards'); // cards | table
-      const [sidebarOpen, setSidebarOpen] = useState(true);
-      const [drawerOpen, setDrawerOpen] = useState(false);
-      const [editingVendor, setEditingVendor] = useState(null);
-      const [importOpen, setImportOpen] = useState(false);
-      const [selectedIds, setSelectedIds] = useState(new Set());
-      const [dbModalOpen, setDbModalOpen] = useState(false);
-      const [firebaseActive, setFirebaseActive] = useState(() => {
-        return firebase.apps.length > 0 && localStorage.getItem('vms_firebase_enabled') === 'true';
-      });
+      const [vendors, setVendors]               = useState([]);
+      const [loading, setLoading]               = useState(true);
+      const [searchQuery, setSearchQuery]       = useState('');
+      const [view, setView]                     = useState('cards');
+      const [sidebarOpen, setSidebarOpen]       = useState(false);
+      const [mobileFilterOpen, setMobileFilter] = useState(false);
+      const [drawerOpen, setDrawerOpen]         = useState(false);
+      const [editingVendor, setEditingVendor]   = useState(null);
+      const [importOpen, setImportOpen]         = useState(false);
+      const [selectedIds, setSelectedIds]       = useState(new Set());
+      const [brandingOpen, setBrandingOpen]     = useState(false);
+      const [branding, setBranding]             = useState(brandingCtx);
+      const [currentPage, setCurrentPage]       = useState(0);
+      const [exportOpen, setExportOpen]         = useState(false);
 
-      // Filters
-      const [filters, setFilters] = useState({ vendorType: [], country: '', state: '', city: '', location: '', areaPerforming: '', company: '', isFavorite: null, tags: [] });
+      const [filters, setFilters] = useState({ vendorType:[], country:'', state:'', city:'', location:'', areaPerforming:'', company:'', isFavorite:null, tags:[] });
 
-      const setFilter = (k, v) => setFilters(f => ({...f, [k]: v}));
+      const setFilter = (k, v) => {
+        if (k === '_clear') { setFilters({ vendorType:[], country:'', state:'', city:'', location:'', areaPerforming:'', company:'', isFavorite:null, tags:[] }); }
+        else { setFilters(f => ({...f,[k]:v})); }
+        setCurrentPage(0);
+      };
 
-      // Fetch vendors (from Firebase or Local Storage)
+      // Open sidebar by default on desktop
+      useEffect(()=>{
+        const mq = window.matchMedia('(min-width:640px)');
+        setSidebarOpen(mq.matches);
+        const h = e => setSidebarOpen(e.matches);
+        mq.addEventListener('change',h);
+        return ()=>mq.removeEventListener('change',h);
+      },[]);
+
+      // Apply branding to DOM
+      useEffect(()=>{
+        if (branding.appTitle) document.title = branding.appTitle;
+        if (branding.faviconUrl) { const l=document.getElementById('favicon-link'); if(l) l.href=branding.faviconUrl; }
+      },[branding]);
+
+      // Reset page on search
+      useEffect(()=>setCurrentPage(0),[searchQuery]);
+
+      // Firebase fetch — always on
       const fetchVendors = useCallback(async () => {
         setLoading(true);
         try {
-          const isFirebase = firebase.apps.length > 0 && localStorage.getItem('vms_firebase_enabled') === 'true';
-          setFirebaseActive(isFirebase);
-
-          if (isFirebase) {
-            const db = firebase.firestore();
-            let q = db.collection('vendors').orderBy('updatedAt', 'desc');
-
-            // Server-side filters
-            if (filters.vendorType.length === 1) q = q.where('vendorType', 'array-contains', filters.vendorType[0]);
-            if (filters.country) q = q.where('country', '==', filters.country);
-            if (filters.isFavorite === true) q = q.where('isFavorite', '==', true);
-
-            q = q.limit(500);
-            const snap = await q.get();
-            let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            // Client-side filters
-            if (filters.vendorType.length > 1) docs = docs.filter(v => filters.vendorType.some(t => (v.vendorType||[]).includes(t)));
-            if (filters.state) docs = docs.filter(v => v.state === filters.state);
-            if (filters.city) docs = docs.filter(v => (v.city||'').toLowerCase().includes(filters.city.toLowerCase()));
-            if (filters.location) docs = docs.filter(v => (v.location||'').toLowerCase().includes(filters.location.toLowerCase()));
-            if (filters.areaPerforming) docs = docs.filter(v => (v.areaPerforming||'').toLowerCase().includes(filters.areaPerforming.toLowerCase()));
-            if (filters.company) docs = docs.filter(v => (v.company||'').toLowerCase().includes(filters.company.toLowerCase()));
-            if (filters.tags.length > 0) docs = docs.filter(v => filters.tags.every(t => (v.tags||[]).includes(t)));
-
-            setVendors(docs);
-          } else {
-            // Local Mode
-            let docs = getLocalVendors();
-            
-            // Client-side filters
-            if (filters.vendorType.length > 0) docs = docs.filter(v => filters.vendorType.some(t => (v.vendorType||[]).includes(t)));
-            if (filters.country) docs = docs.filter(v => v.country === filters.country);
-            if (filters.state) docs = docs.filter(v => v.state === filters.state);
-            if (filters.city) docs = docs.filter(v => (v.city||'').toLowerCase().includes(filters.city.toLowerCase()));
-            if (filters.location) docs = docs.filter(v => (v.location||'').toLowerCase().includes(filters.location.toLowerCase()));
-            if (filters.areaPerforming) docs = docs.filter(v => (v.areaPerforming||'').toLowerCase().includes(filters.areaPerforming.toLowerCase()));
-            if (filters.company) docs = docs.filter(v => (v.company||'').toLowerCase().includes(filters.company.toLowerCase()));
-            if (filters.isFavorite === true) docs = docs.filter(v => v.isFavorite === true);
-            if (filters.tags.length > 0) docs = docs.filter(v => filters.tags.every(t => (v.tags||[]).includes(t)));
-
-            // Sort by updatedAt desc
-            docs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-            setVendors(docs);
-          }
+          const db = firebase.firestore();
+          let q = db.collection('vendors').orderBy('updatedAt','desc');
+          if (filters.vendorType.length===1) q=q.where('vendorType','array-contains',filters.vendorType[0]);
+          if (filters.country)              q=q.where('country','==',filters.country);
+          if (filters.isFavorite===true)    q=q.where('isFavorite','==',true);
+          q = q.limit(500);
+          const snap = await q.get();
+          let docs = snap.docs.map(d=>({id:d.id,...d.data()}));
+          if (filters.vendorType.length>1) docs=docs.filter(v=>filters.vendorType.some(t=>(v.vendorType||[]).includes(t)));
+          if (filters.state)         docs=docs.filter(v=>v.state===filters.state);
+          if (filters.city)          docs=docs.filter(v=>(v.city||'').toLowerCase().includes(filters.city.toLowerCase()));
+          if (filters.location)      docs=docs.filter(v=>(v.location||'').toLowerCase().includes(filters.location.toLowerCase()));
+          if (filters.areaPerforming)docs=docs.filter(v=>(v.areaPerforming||'').toLowerCase().includes(filters.areaPerforming.toLowerCase()));
+          if (filters.company)       docs=docs.filter(v=>(v.company||'').toLowerCase().includes(filters.company.toLowerCase()));
+          if (filters.tags.length>0) docs=docs.filter(v=>filters.tags.every(t=>(v.tags||[]).includes(t)));
+          setVendors(docs);
         } catch(err) {
-          console.error('Fetch error:', err);
-          toast('Failed to load vendors: ' + err.message, 'error');
-        } finally {
-          setLoading(false);
-        }
+          console.error('Fetch error:',err);
+          toast('Failed to load vendors: '+err.message,'error');
+        } finally { setLoading(false); }
       }, [filters, toast]);
 
-      useEffect(() => { fetchVendors(); }, [fetchVendors]);
+      useEffect(()=>{ fetchVendors(); },[fetchVendors]);
 
-      // Debounced search filter (client-side on loaded data)
-      const filteredVendors = useMemo(() => {
+      const filteredVendors = useMemo(()=>{
         if (!searchQuery.trim()) return vendors;
-        const q = searchQuery.toLowerCase().trim();
-        return vendors.filter(v =>
-          (v.name||'').toLowerCase().includes(q) ||
-          (v.company||'').toLowerCase().includes(q) ||
-          (v.email||'').toLowerCase().includes(q) ||
-          (v.mobile||'').includes(q) ||
-          (v.country||'').toLowerCase().includes(q) ||
-          (v.city||'').toLowerCase().includes(q) ||
-          (v.location||'').toLowerCase().includes(q) ||
-          (v.areaPerforming||'').toLowerCase().includes(q)
+        const q=searchQuery.toLowerCase().trim();
+        return vendors.filter(v=>
+          (v.name||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q)||
+          (v.email||'').toLowerCase().includes(q)||(v.mobile||'').includes(q)||
+          (v.country||'').toLowerCase().includes(q)||(v.city||'').toLowerCase().includes(q)||
+          (v.location||'').toLowerCase().includes(q)||(v.areaPerforming||'').toLowerCase().includes(q)
         );
-      }, [vendors, searchQuery]);
+      },[vendors,searchQuery]);
 
-      // CRUD operations
+      const paginatedVendors = useMemo(()=>filteredVendors.slice(currentPage*PAGE_SIZE,(currentPage+1)*PAGE_SIZE),[filteredVendors,currentPage]);
+
+      // CRUD — Firebase only
       const saveVendor = async (formData, existingId) => {
-        const searchTerms = generateSearchTerms(formData);
-        const waUrl = whatsappUrl(formData.whatsapp);
-        const now = firebaseActive ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString();
-
-        const data = {
-          ...formData,
-          nameLower: formData.name.toLowerCase(),
-          companyLower: (formData.company||'').toLowerCase(),
-          whatsappUrl: waUrl,
-          searchTerms,
-          updatedAt: now,
-          updatedBy: user.uid,
-        };
-
-        try {
-          if (firebaseActive) {
-            const db = firebase.firestore();
-            if (existingId) {
-              await db.collection('vendors').doc(existingId).update(data);
-              toast('Vendor updated in Firebase', 'success');
-            } else {
-              data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-              data.createdBy = user.uid;
-              data.attachments = [];
-              await db.collection('vendors').add(data);
-              toast('Vendor created in Firebase', 'success');
-            }
-          } else {
-            // Local Mode
-            let localVendors = getLocalVendors();
-            if (existingId) {
-              localVendors = localVendors.map(v => v.id === existingId ? { ...v, ...data, updatedAt: now } : v);
-              toast('Vendor updated locally', 'success');
-            } else {
-              const newVendor = {
-                ...data,
-                id: 'vendor-' + Date.now(),
-                createdAt: now,
-                createdBy: user.uid,
-                attachments: [],
-              };
-              localVendors.push(newVendor);
-              toast('Vendor created locally', 'success');
-            }
-            saveLocalVendors(localVendors);
-          }
-          fetchVendors();
-        } catch (err) {
-          toast('Save failed: ' + err.message, 'error');
-        }
+        const now  = firebase.firestore.FieldValue.serverTimestamp();
+        const data = { ...formData, nameLower:(formData.name||'').toLowerCase(), companyLower:(formData.company||'').toLowerCase(), whatsappUrl:whatsappUrl(formData.whatsapp), searchTerms:generateSearchTerms(formData), updatedAt:now, updatedBy:user.uid };
+        const db = firebase.firestore();
+        if (existingId) { await db.collection('vendors').doc(existingId).update(data); toast('Vendor updated','success'); }
+        else { data.createdAt=now; data.createdBy=user.uid; data.attachments=[]; await db.collection('vendors').add(data); toast('Vendor added','success'); }
+        fetchVendors();
       };
 
       const deleteVendor = async (vendor) => {
         if (!window.confirm(`Delete "${vendor.name}"? This cannot be undone.`)) return;
-        try {
-          if (firebaseActive) {
-            const db = firebase.firestore();
-            await db.collection('vendors').doc(vendor.id).delete();
-            toast('Vendor deleted from Firebase', 'success');
-          } else {
-            let localVendors = getLocalVendors();
-            localVendors = localVendors.filter(v => v.id !== vendor.id);
-            saveLocalVendors(localVendors);
-            toast('Vendor deleted locally', 'success');
-          }
-          fetchVendors();
-        } catch(err) { toast('Delete failed: ' + err.message, 'error'); }
+        try { await firebase.firestore().collection('vendors').doc(vendor.id).delete(); toast('Vendor deleted','success'); fetchVendors(); }
+        catch(err){ toast('Delete failed: '+err.message,'error'); }
       };
 
       const toggleFavorite = async (vendor) => {
-        try {
-          const now = firebaseActive ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString();
-          
-          if (firebaseActive) {
-            const db = firebase.firestore();
-            await db.collection('vendors').doc(vendor.id).update({ isFavorite: !vendor.isFavorite, updatedAt: now });
-          } else {
-            let localVendors = getLocalVendors();
-            localVendors = localVendors.map(v => v.id === vendor.id ? { ...v, isFavorite: !v.isFavorite, updatedAt: now } : v);
-            saveLocalVendors(localVendors);
-          }
-          fetchVendors();
-        } catch(err) { toast('Failed: ' + err.message, 'error'); }
+        try { await firebase.firestore().collection('vendors').doc(vendor.id).update({isFavorite:!vendor.isFavorite,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}); fetchVendors(); }
+        catch(err){ toast('Failed: '+err.message,'error'); }
       };
 
       const batchImport = async (rows) => {
-        const now = firebaseActive ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString();
-
-        try {
-          if (firebaseActive) {
-            const db = firebase.firestore();
-            const batch = db.batch();
-            rows.forEach(r => {
-              const types = (r.vendortype || r.vendorType || '').split(',').map(s => s.trim()).filter(Boolean);
-              const tags = (r.tags || '').split(',').map(s => s.trim()).filter(Boolean);
-              const data = {
-                name: r.name||'', designation: r.designation||'', company: r.company||'',
-                vendorType: types, country: r.country||'', state: r.state||'', city: r.city||'',
-                location: r.location||'', areaPerforming: r.areaperforming || r.areaPerforming || '',
-                mobile: r.mobile||'', whatsapp: r.whatsapp||'', email: r.email||'', website: r.website||'',
-                gst: r.gst||'', iec: r.iec||'', pan: r.pan||'',
-                tags, notes: r.notes||'', attachments: [], isFavorite: false,
-                nameLower: (r.name||'').toLowerCase(), companyLower: (r.company||'').toLowerCase(),
-                whatsappUrl: whatsappUrl(r.whatsapp||''),
-                searchTerms: generateSearchTerms({...r, vendorType: types, tags}),
-                createdAt: now, updatedAt: now,
-                createdBy: user.uid, updatedBy: user.uid,
-              };
-              batch.set(db.collection('vendors').doc(), data);
-            });
-            await batch.commit();
-            toast('Imported to Firebase successfully', 'success');
-          } else {
-            let localVendors = getLocalVendors();
-            rows.forEach((r, idx) => {
-              const types = (r.vendortype || r.vendorType || '').split(',').map(s => s.trim()).filter(Boolean);
-              const tags = (r.tags || '').split(',').map(s => s.trim()).filter(Boolean);
-              const data = {
-                id: 'vendor-' + Date.now() + '-' + idx,
-                name: r.name||'', designation: r.designation||'', company: r.company||'',
-                vendorType: types, country: r.country||'', state: r.state||'', city: r.city||'',
-                location: r.location||'', areaPerforming: r.areaperforming || r.areaPerforming || '',
-                mobile: r.mobile||'', whatsapp: r.whatsapp||'', email: r.email||'', website: r.website||'',
-                gst: r.gst||'', iec: r.iec||'', pan: r.pan||'',
-                tags, notes: r.notes||'', attachments: [], isFavorite: false,
-                nameLower: (r.name||'').toLowerCase(), companyLower: (r.company||'').toLowerCase(),
-                whatsappUrl: whatsappUrl(r.whatsapp||''),
-                searchTerms: generateSearchTerms({...r, vendorType: types, tags}),
-                createdAt: now, updatedAt: now,
-                createdBy: user.uid, updatedBy: user.uid,
-              };
-              localVendors.push(data);
-            });
-            saveLocalVendors(localVendors);
-            toast(`Imported ${rows.length} vendors locally`, 'success');
-          }
-          fetchVendors();
-        } catch (err) {
-          toast('Import failed: ' + err.message, 'error');
-        }
-      };
-
-      // Export
-      const handleExport = (scope) => {
-        let data;
-        if (scope === 'selected') data = filteredVendors.filter(v => selectedIds.has(v.id));
-        else if (scope === 'filtered') data = filteredVendors;
-        else data = vendors;
-
-        if (data.length === 0) { toast('No data to export', 'error'); return; }
-
-        const rows = data.map(v => {
-          const row = {};
-          EXPORT_HEADERS.forEach((h, i) => {
-            const val = v[EXPORT_KEYS[i]];
-            row[h] = Array.isArray(val) ? val.join(', ') : String(val||'');
-          });
-          return row;
+        const now=firebase.firestore.FieldValue.serverTimestamp(), db=firebase.firestore(), batch=db.batch();
+        rows.forEach(r=>{
+          const types=(r.vendortype||r.vendorType||'').split(',').map(s=>s.trim()).filter(Boolean);
+          const tags=(r.tags||'').split(',').map(s=>s.trim()).filter(Boolean);
+          const data={name:r.name||'',designation:r.designation||'',company:r.company||'',vendorType:types,country:r.country||'',state:r.state||'',city:r.city||'',location:r.location||'',areaPerforming:r.areaperforming||r.areaPerforming||'',mobile:r.mobile||'',whatsapp:r.whatsapp||'',email:r.email||'',website:r.website||'',gst:r.gst||'',iec:r.iec||'',pan:r.pan||'',tags,notes:r.notes||'',attachments:[],isFavorite:false,nameLower:(r.name||'').toLowerCase(),companyLower:(r.company||'').toLowerCase(),whatsappUrl:whatsappUrl(r.whatsapp||''),searchTerms:generateSearchTerms({...r,vendorType:types,tags}),createdAt:now,updatedAt:now,createdBy:user.uid,updatedBy:user.uid};
+          batch.set(db.collection('vendors').doc(),data);
         });
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Vendors');
-        XLSX.writeFile(wb, `vendors_${new Date().toISOString().slice(0,10)}.xlsx`);
-        toast(`Exported ${data.length} vendors`, 'success');
+        await batch.commit();
+        toast(`Imported ${rows.length} vendors`,'success');
+        fetchVendors();
       };
 
-      // Selection
-      const toggleSelect = (id) => setSelectedIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-      const selectAll = (ids) => setSelectedIds(new Set(ids));
-
-      // Copy selected
-      const copySelectedField = (field) => {
-        const values = filteredVendors.filter(v => selectedIds.has(v.id)).map(v => v[field]).filter(Boolean).join(', ');
-        copyToClipboard(values);
-        toast(`Copied ${field}`, 'success');
+      const handleExport = (scope) => {
+        let data = scope==='selected'?filteredVendors.filter(v=>selectedIds.has(v.id)):scope==='filtered'?filteredVendors:vendors;
+        if (!data.length){toast('No data to export','error');return;}
+        const rows=data.map(v=>{const r={};EXPORT_HEADERS.forEach((h,i)=>{const val=v[EXPORT_KEYS[i]];r[h]=Array.isArray(val)?val.join(', '):String(val||'');});return r;});
+        const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb,ws,'Vendors');
+        XLSX.writeFile(wb,`vendors_${new Date().toISOString().slice(0,10)}.xlsx`);
+        toast(`Exported ${data.length} vendors`,'success');
       };
 
-      const handleLogout = () => { onLogout(); };
+      const toggleSelect = (id) => setSelectedIds(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+      const selectAll    = (ids) => setSelectedIds(new Set(ids));
+      const copyField    = (field) => { const v=filteredVendors.filter(v=>selectedIds.has(v.id)).map(v=>v[field]).filter(Boolean).join(', '); copyToClipboard(v); toast(`Copied ${field}`,'success'); };
 
-      const filterCount = [filters.vendorType.length > 0, filters.country, filters.state, filters.city, filters.location, filters.areaPerforming, filters.company, filters.isFavorite !== null, filters.tags.length > 0].filter(Boolean).length;
-
-      const [exportOpen, setExportOpen] = useState(false);
-      const [tagFilterInput, setTagFilterInput] = useState('');
+      const filterCount = [filters.vendorType.length>0,filters.country,filters.state,filters.city,filters.location,filters.areaPerforming,filters.company,filters.isFavorite!==null,filters.tags.length>0].filter(Boolean).length;
 
       return (
-        <div className="flex flex-col h-screen overflow-hidden">
-          {/* Top Bar */}
-          <header className="flex items-center justify-between px-3 py-1.5 border-b border-border flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold tracking-tight">Vendor Management</h1>
-              <span className="px-1.5 py-0.5 text-2xs font-medium bg-accent-light text-accent rounded">{role}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/* Connection Status & Trigger Settings */}
-              <button
-                onClick={() => setDbModalOpen(true)}
-                className={`px-2 py-0.5 text-2xs font-medium rounded border flex items-center gap-1 transition-colors ${
-                  firebaseActive ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-gray-50 border-border text-muted hover:bg-hover-bg'
-                }`}
-                title="Change Database Connection"
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${firebaseActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-                {firebaseActive ? 'Firebase Sync' : 'Local Storage'}
+        <BrandingContext.Provider value={branding}>
+          <div className="flex flex-col h-screen overflow-hidden">
+
+            {/* ── Header ── */}
+            <header className="flex items-center justify-between px-3 py-1.5 border-b border-border flex-shrink-0 bg-white">
+              <div className="flex items-center gap-2 min-w-0">
+                {branding.logoUrl && <img src={branding.logoUrl} alt="Logo" className="h-6 w-auto object-contain flex-shrink-0"/>}
+                <h1 className="text-sm font-bold tracking-tight truncate">{branding.appTitle||'Vendor Management'}</h1>
+                <span className="px-1.5 py-0.5 text-2xs font-medium bg-accent-light text-accent rounded hidden sm:inline">{role}</span>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-2xs text-muted hidden md:inline truncate max-w-[160px]">{branding.contactEmail||user?.email}</span>
+                {canDelete && (
+                  <button onClick={()=>setBrandingOpen(true)} className="p-1.5 rounded hover:bg-hover-bg text-muted hover:text-accent" title="Branding Settings">
+                    <Icon name="settings" size={14}/>
+                  </button>
+                )}
+                <button onClick={onLogout} className="p-1.5 rounded hover:bg-hover-bg text-muted hover:text-danger" title="Sign Out">
+                  <Icon name="logOut" size={14}/>
+                </button>
+              </div>
+            </header>
+
+            {/* ── Toolbar ── */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border flex-shrink-0 flex-wrap bg-white">
+              {/* Mobile filter trigger */}
+              <button onClick={()=>setMobileFilter(true)}
+                className={`sm:hidden px-2 py-1 text-2xs rounded border flex items-center gap-1 transition-colors ${filterCount>0?'border-accent text-accent bg-accent-light':'border-border text-muted hover:bg-hover-bg'}`}>
+                <Icon name="filter" size={11}/> Filters{filterCount>0?` (${filterCount})`:''}
+              </button>
+              {/* Desktop filter toggle */}
+              <button onClick={()=>setSidebarOpen(!sidebarOpen)}
+                className={`hidden sm:flex px-2 py-1 text-2xs rounded border items-center gap-1 transition-colors ${filterCount>0?'border-accent text-accent':'border-border text-muted hover:bg-hover-bg'}`}>
+                <Icon name="filter" size={11}/> Filters{filterCount>0?` (${filterCount})`:''}
               </button>
 
-              <span className="text-2xs text-muted mr-1">{user?.email}</span>
-              <button onClick={handleLogout} className="p-1 rounded hover:bg-hover-bg text-muted hover:text-danger" title="Sign Out">
-                <Icon name="logOut" size={14} />
-              </button>
+              <div className="relative flex-1 min-w-[120px] max-w-md">
+                <Icon name="search" size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted"/>
+                <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Search vendors..."
+                  className="w-full pl-7 pr-7 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent"/>
+                {searchQuery&&<button onClick={()=>setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"><Icon name="x" size={10}/></button>}
+              </div>
+
+              <div className="flex border border-border rounded overflow-hidden">
+                <button onClick={()=>setView('cards')} className={`px-2 py-1 text-xs ${view==='cards'?'bg-accent text-white':'bg-white text-muted hover:bg-hover-bg'}`} title="Card View"><Icon name="map" size={12}/></button>
+                <button onClick={()=>setView('table')} className={`px-2 py-1 text-xs ${view==='table'?'bg-accent text-white':'bg-white text-muted hover:bg-hover-bg'}`} title="Table View"><Icon name="table" size={12}/></button>
+              </div>
+
+              <div className="hidden sm:block w-px h-5 bg-border"/>
+
+              {canEdit&&<button onClick={()=>{setEditingVendor(null);setDrawerOpen(true);}} className="px-2.5 py-1 text-xs bg-accent text-white rounded hover:bg-blue-700 flex items-center gap-1 h-7"><Icon name="plus" size={11}/><span className="hidden sm:inline">Add Vendor</span><span className="sm:hidden">Add</span></button>}
+              {canEdit&&<button onClick={()=>setImportOpen(true)} className="hidden sm:flex px-2.5 py-1 text-xs border border-border rounded hover:bg-hover-bg items-center gap-1 h-7"><Icon name="upload" size={11}/> Import</button>}
+
+              <div className="relative">
+                <button onClick={()=>setExportOpen(!exportOpen)} className="px-2.5 py-1 text-xs border border-border rounded hover:bg-hover-bg flex items-center gap-1 h-7"><Icon name="download" size={11}/><span className="hidden sm:inline">Export</span></button>
+                {exportOpen&&<>
+                  <div className="fixed inset-0 z-20" onClick={()=>setExportOpen(false)}/>
+                  <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-border rounded shadow-lg min-w-[170px] py-1 fade-in">
+                    <button onClick={()=>{handleExport('all');setExportOpen(false);}} className="w-full px-3 py-1.5 text-xs text-left hover:bg-hover-bg">All ({vendors.length})</button>
+                    <button onClick={()=>{handleExport('filtered');setExportOpen(false);}} className="w-full px-3 py-1.5 text-xs text-left hover:bg-hover-bg">Filtered ({filteredVendors.length})</button>
+                    <button onClick={()=>{handleExport('selected');setExportOpen(false);}} disabled={selectedIds.size===0} className="w-full px-3 py-1.5 text-xs text-left hover:bg-hover-bg disabled:opacity-50">Selected ({selectedIds.size})</button>
+                  </div>
+                </>}
+              </div>
             </div>
-          </header>
 
-          {/* Toolbar */}
-          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border flex-shrink-0">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className={`px-2 py-1 text-2xs rounded border transition-colors flex items-center gap-1 ${filterCount > 0 ? 'border-accent text-accent' : 'border-border text-muted hover:bg-hover-bg'}`}>
-              <Icon name="filter" size={11} /> Filters{filterCount > 0 ? ` (${filterCount})` : ''}
-            </button>
-
-            <div className="relative flex-1 max-w-md">
-              <Icon name="search" size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
-              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search vendors..."
-                className="w-full pl-7 pr-7 py-1 text-xs border border-border rounded h-7 focus:ring-1 focus:ring-accent focus:border-accent" />
-              {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"><Icon name="x" size={10} /></button>}
-            </div>
-
-            <div className="flex border border-border rounded overflow-hidden">
-              <button onClick={() => setView('cards')} className={`px-2 py-1 text-xs ${view==='cards' ? 'bg-accent text-white' : 'bg-white text-muted hover:bg-hover-bg'}`} title="Card View"><Icon name="map" size={12} /></button>
-              <button onClick={() => setView('table')} className={`px-2 py-1 text-xs ${view==='table' ? 'bg-accent text-white' : 'bg-white text-muted hover:bg-hover-bg'}`} title="Table View"><Icon name="table" size={12} /></button>
-            </div>
-
-            <div className="w-px h-5 bg-border" />
-
-            {canEdit && <button onClick={() => { setEditingVendor(null); setDrawerOpen(true); }} className="px-2.5 py-1 text-xs bg-accent text-white rounded hover:bg-blue-700 flex items-center gap-1 h-7"><Icon name="plus" size={11} /> Add Vendor</button>}
-            {canEdit && <button onClick={() => setImportOpen(true)} className="px-2.5 py-1 text-xs border border-border rounded hover:bg-hover-bg flex items-center gap-1 h-7"><Icon name="upload" size={11} /> Import</button>}
-
-            <div className="relative">
-              <button onClick={() => setExportOpen(!exportOpen)} className="px-2.5 py-1 text-xs border border-border rounded hover:bg-hover-bg flex items-center gap-1 h-7"><Icon name="download" size={11} /> Export</button>
-              {exportOpen && <>
-                <div className="fixed inset-0 z-20" onClick={() => setExportOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-border rounded shadow-lg min-w-[170px] py-1 fade-in">
-                  <button onClick={() => { handleExport('all'); setExportOpen(false); }} className="w-full px-3 py-1.5 text-xs text-left hover:bg-hover-bg">All Vendors ({vendors.length})</button>
-                  <button onClick={() => { handleExport('filtered'); setExportOpen(false); }} className="w-full px-3 py-1.5 text-xs text-left hover:bg-hover-bg">Filtered ({filteredVendors.length})</button>
-                  <button onClick={() => { handleExport('selected'); setExportOpen(false); }} disabled={selectedIds.size===0} className="w-full px-3 py-1.5 text-xs text-left hover:bg-hover-bg disabled:opacity-50">Selected ({selectedIds.size})</button>
-                </div>
-              </>}
-            </div>
-          </div>
-
-          {/* Bulk actions */}
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-light border-b border-blue-200 flex-shrink-0">
-              <span className="text-2xs font-medium text-accent mr-1">{selectedIds.size} selected</span>
-              <button onClick={() => copySelectedField('email')} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-accent flex items-center gap-0.5"><Icon name="copy" size={9} /> Emails</button>
-              <button onClick={() => copySelectedField('mobile')} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-accent flex items-center gap-0.5"><Icon name="copy" size={9} /> Phones</button>
-              <button onClick={() => copySelectedField('whatsapp')} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-accent flex items-center gap-0.5"><Icon name="copy" size={9} /> WhatsApp</button>
-              <button onClick={() => copySelectedField('company')} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-accent flex items-center gap-0.5"><Icon name="copy" size={9} /> Companies</button>
-              <div className="flex-1" />
-              <button onClick={() => setSelectedIds(new Set())} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-muted flex items-center gap-0.5"><Icon name="x" size={9} /> Clear</button>
-            </div>
-          )}
-
-          <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar */}
-            {sidebarOpen && (
-              <aside className="w-[210px] border-r border-border flex-shrink-0 flex flex-col h-full overflow-hidden bg-white">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-                  <span className="text-xs font-semibold">Filters</span>
-                  {filterCount > 0 && <button onClick={() => setFilters({ vendorType:[], country:'', state:'', city:'', location:'', areaPerforming:'', company:'', isFavorite:null, tags:[] })} className="text-2xs text-accent hover:underline">Clear ({filterCount})</button>}
-                </div>
-                <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">Vendor Type</div>
-                    {VENDOR_TYPES.map(t => (
-                      <label key={t} className="flex items-center gap-1.5 py-0.5 text-xs cursor-pointer hover:text-accent">
-                        <input type="checkbox" checked={filters.vendorType.includes(t)} onChange={() => setFilter('vendorType', filters.vendorType.includes(t) ? filters.vendorType.filter(x=>x!==t) : [...filters.vendorType, t])} className="w-3 h-3 rounded" />
-                        <span className={filters.vendorType.includes(t) ? 'font-medium text-foreground' : 'text-muted'}>{t}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">Country</div>
-                    <select value={filters.country} onChange={e => setFilter('country', e.target.value)} className="w-full px-2 py-1 text-xs border border-border rounded h-7 appearance-none bg-white">
-                      <option value="">All</option>{COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">State</div>
-                    <select value={filters.state} onChange={e => setFilter('state', e.target.value)} className="w-full px-2 py-1 text-xs border border-border rounded h-7 appearance-none bg-white">
-                      <option value="">All</option>{INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">City</div>
-                    <input value={filters.city} onChange={e => setFilter('city', e.target.value)} placeholder="City" className="w-full px-2 py-1 text-xs border border-border rounded h-7" />
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">Location</div>
-                    <input value={filters.location} onChange={e => setFilter('location', e.target.value)} placeholder="Location" className="w-full px-2 py-1 text-xs border border-border rounded h-7" />
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">Area</div>
-                    <input value={filters.areaPerforming} onChange={e => setFilter('areaPerforming', e.target.value)} placeholder="Area" className="w-full px-2 py-1 text-xs border border-border rounded h-7" />
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">Company</div>
-                    <input value={filters.company} onChange={e => setFilter('company', e.target.value)} placeholder="Company" className="w-full px-2 py-1 text-xs border border-border rounded h-7" />
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">Tags</div>
-                    <input value={tagFilterInput} onChange={e => setTagFilterInput(e.target.value)} onKeyDown={e => { if (e.key==='Enter') { e.preventDefault(); const t=tagFilterInput.trim(); if(t && !filters.tags.includes(t)) setFilter('tags',[...filters.tags, t]); setTagFilterInput(''); }}} placeholder="Add tag" className="w-full px-2 py-1 text-xs border border-border rounded h-7" />
-                    {filters.tags.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{filters.tags.map(t => <span key={t} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-2xs bg-accent-light text-accent rounded">{t}<button onClick={() => setFilter('tags', filters.tags.filter(x=>x!==t))}><Icon name="x" size={8} /></button></span>)}</div>}
-                  </div>
-                  <div><div className="text-2xs font-semibold text-muted uppercase mb-1">Favorites</div>
-                    <button onClick={() => setFilter('isFavorite', filters.isFavorite===true ? null : true)}
-                      className={`flex items-center gap-1 px-2 py-1 text-xs rounded border ${filters.isFavorite===true ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-border text-muted hover:bg-hover-bg'}`}>
-                      <Icon name="star" size={11} className={filters.isFavorite===true ? 'fill-current' : ''} /> Favorites Only
-                    </button>
-                  </div>
-                </div>
-              </aside>
+            {/* ── Bulk actions ── */}
+            {selectedIds.size>0&&(
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-light border-b border-blue-200 flex-shrink-0 flex-wrap">
+                <span className="text-2xs font-medium text-accent">{selectedIds.size} selected</span>
+                <button onClick={()=>copyField('email')} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-accent flex items-center gap-0.5"><Icon name="copy" size={9}/> Emails</button>
+                <button onClick={()=>copyField('mobile')} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-accent flex items-center gap-0.5"><Icon name="copy" size={9}/> Phones</button>
+                <button onClick={()=>copyField('whatsapp')} className="hidden sm:flex px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-accent items-center gap-0.5"><Icon name="copy" size={9}/> WhatsApp</button>
+                <div className="flex-1"/>
+                <button onClick={()=>setSelectedIds(new Set())} className="px-2 py-0.5 text-2xs rounded hover:bg-blue-100 text-muted flex items-center gap-0.5"><Icon name="x" size={9}/> Clear</button>
+              </div>
             )}
 
-            {/* Main content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex items-center justify-between px-3 py-1 bg-gray-50 border-b border-border text-2xs text-muted flex-shrink-0">
-                <span>Showing {filteredVendors.length} of {vendors.length} vendors</span>
-                <span className="capitalize">{view} view</span>
-              </div>
+            <div className="flex flex-1 overflow-hidden">
+              {/* ── Desktop sidebar ── */}
+              {sidebarOpen&&(
+                <aside className="hidden sm:flex w-[200px] border-r border-border flex-shrink-0 flex-col h-full overflow-hidden bg-white">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                    <span className="text-xs font-semibold">Filters</span>
+                    {filterCount>0&&<button onClick={()=>setFilter('_clear')} className="text-2xs text-accent hover:underline">Clear ({filterCount})</button>}
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <FilterContent filters={filters} setFilter={setFilter}/>
+                  </div>
+                </aside>
+              )}
 
-              <div className="flex-1 overflow-auto p-3">
-                {loading && vendors.length === 0 ? (
-                  <div className="flex items-center justify-center h-full"><Icon name="loader" size={24} className="animate-spin text-accent" /></div>
-                ) : filteredVendors.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted">
-                    <Icon name="database" size={32} className="mb-2 text-gray-300" />
-                    <p className="text-sm font-medium">No vendors found</p>
-                    <p className="text-2xs mt-0.5">Add your first vendor or adjust filters</p>
-                    {canEdit && <button onClick={() => { setEditingVendor(null); setDrawerOpen(true); }} className="mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-blue-700 flex items-center gap-1"><Icon name="plus" size={11} /> Add Vendor</button>}
-                  </div>
-                ) : view === 'cards' ? (
-                  <div className="flex flex-wrap gap-2.5 content-start">
-                    {filteredVendors.map(v => <VendorCard key={v.id} vendor={v} onEdit={v => { setEditingVendor(v); setDrawerOpen(true); }} onDelete={deleteVendor} onToggleFav={toggleFavorite} canEdit={canEdit} canDelete={canDelete} />)}
-                  </div>
-                ) : (
-                  <VendorTableView vendors={filteredVendors} onEdit={v => { setEditingVendor(v); setDrawerOpen(true); }} onDelete={deleteVendor} onToggleFav={toggleFavorite} canEdit={canEdit} canDelete={canDelete} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} loading={loading} />
-                )}
+              {/* ── Content area ── */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Status bar */}
+                <div className="flex items-center justify-between px-3 py-1 bg-gray-50 border-b border-border text-2xs text-muted flex-shrink-0">
+                  {loading ? (
+                    <div className="h-2.5 w-36 bg-gray-200 rounded animate-pulse"/>
+                  ) : (
+                    <span>
+                      {filteredVendors.length>0
+                        ? `Showing ${currentPage*PAGE_SIZE+1}–${Math.min((currentPage+1)*PAGE_SIZE,filteredVendors.length)} of ${filteredVendors.length} vendors`
+                        : 'No vendors found'}
+                    </span>
+                  )}
+                  <span className="capitalize hidden sm:inline">{view} view · Firebase</span>
+                </div>
+
+                {/* Vendor list */}
+                <div className="flex-1 overflow-auto p-2 sm:p-3">
+                  {loading && vendors.length===0 ? (
+                    view==='cards' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5 content-start">
+                        {[...Array(9)].map((_,i)=><SkeletonCard key={i}/>)}
+                      </div>
+                    ) : (
+                      <div className="overflow-auto h-full"><table className="w-full text-xs"><tbody>{[...Array(8)].map((_,i)=><SkeletonRow key={i}/>)}</tbody></table></div>
+                    )
+                  ) : filteredVendors.length===0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-muted">
+                      <Icon name="database" size={32} className="mb-2 text-gray-300"/>
+                      <p className="text-sm font-medium">No vendors found</p>
+                      <p className="text-2xs mt-0.5">Add your first vendor or adjust filters</p>
+                      {canEdit&&<button onClick={()=>{setEditingVendor(null);setDrawerOpen(true);}} className="mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-blue-700 flex items-center gap-1"><Icon name="plus" size={11}/> Add Vendor</button>}
+                    </div>
+                  ) : view==='cards' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5 content-start">
+                      {paginatedVendors.map(v=><VendorCard key={v.id} vendor={v} onEdit={v=>{setEditingVendor(v);setDrawerOpen(true);}} onDelete={deleteVendor} onToggleFav={toggleFavorite} canEdit={canEdit} canDelete={canDelete}/>)}
+                    </div>
+                  ) : (
+                    <VendorTableView vendors={paginatedVendors} onEdit={v=>{setEditingVendor(v);setDrawerOpen(true);}} onDelete={deleteVendor} onToggleFav={toggleFavorite} canEdit={canEdit} canDelete={canDelete} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} loading={loading}/>
+                  )}
+                </div>
+
+                <PaginationBar total={filteredVendors.length} page={currentPage} pageSize={PAGE_SIZE} onChange={setCurrentPage}/>
               </div>
             </div>
-          </div>
 
-          {/* Drawers & Modals */}
-          <VendorFormDrawer isOpen={drawerOpen} onClose={() => { setDrawerOpen(false); setEditingVendor(null); }} editVendor={editingVendor} onSave={saveVendor} />
-          <ImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} onImport={batchImport} />
-          <DatabaseSettingsModal isOpen={dbModalOpen} onClose={() => setDbModalOpen(false)} onSave={(enabled) => { setFirebaseActive(enabled); fetchVendors(); }} />
-        </div>
+            {/* ── Drawers / Modals ── */}
+            <VendorFormDrawer isOpen={drawerOpen} onClose={()=>{setDrawerOpen(false);setEditingVendor(null);}} editVendor={editingVendor} onSave={saveVendor}/>
+            <ImportModal isOpen={importOpen} onClose={()=>setImportOpen(false)} onImport={batchImport}/>
+            <MobileFilterSheet isOpen={mobileFilterOpen} onClose={()=>setMobileFilter(false)} filters={filters} setFilter={setFilter} filterCount={filterCount}/>
+            {canDelete&&<BrandingSettingsModal isOpen={brandingOpen} onClose={()=>setBrandingOpen(false)} onSaved={b=>setBranding(prev=>({...prev,...b}))}/>}
+          </div>
+        </BrandingContext.Provider>
       );
     }
 
     // ═══════════════════════════════════════════════════════════════════
     // ROOT APP
     // ═══════════════════════════════════════════════════════════════════
-    function App() {
-      const [authState, setAuthState] = useState(() => {
-        const saved = localStorage.getItem('vms_session_user');
-        if (saved) {
-          try {
-            return { user: JSON.parse(saved), role: 'admin', loading: false };
-          } catch (_) {}
-        }
-        return { user: null, role: 'viewer', loading: false };
-      });
+    function App({ branding }) {
+      const [authState, setAuthState] = useState({ user:null, role:'viewer' });
 
-      const handleLogin = (user) => {
-        localStorage.setItem('vms_session_user', JSON.stringify(user));
-        setAuthState({ user, role: user.role, loading: false });
-      };
-
-      const handleLogout = () => {
-        localStorage.removeItem('vms_session_user');
-        setAuthState({ user: null, role: 'viewer', loading: false });
-      };
-
-      if (authState.loading) {
-        return <div className="flex items-center justify-center h-screen"><Icon name="loader" size={24} className="animate-spin text-accent" /><span className="ml-2 text-xs text-muted">Loading...</span></div>;
-      }
+      const handleLogin  = (user) => setAuthState({ user, role:user.role });
+      const handleLogout = ()     => setAuthState({ user:null, role:'viewer' });
 
       if (!authState.user) {
-        return <ToastProvider><LoginScreen onLogin={handleLogin} /></ToastProvider>;
-      }
-
-      // ── Firebase config (loaded securely from /api/config at runtime) ─────
-      // Keys are stored in Vercel Environment Variables — never in source code.
-      const FIREBASE_CONFIG = window._fbConfig || null;
-
-      // Auto-initialize Firebase using the securely fetched config
-      if (FIREBASE_CONFIG && firebase.apps.length === 0) {
-        try {
-          firebase.initializeApp(FIREBASE_CONFIG);
-          localStorage.setItem('vms_firebase_config', JSON.stringify(FIREBASE_CONFIG));
-          localStorage.setItem('vms_firebase_enabled', 'true');
-        } catch (e) {
-          console.error('Firebase init failed:', e);
-        }
+        return (
+          <BrandingContext.Provider value={branding}>
+            <ToastProvider>
+              <LoginScreen onLogin={handleLogin} branding={branding}/>
+            </ToastProvider>
+          </BrandingContext.Provider>
+        );
       }
 
       return (
-        <AuthContext.Provider value={{ user: authState.user, role: authState.role, onLogout: handleLogout }}>
-          <ToastProvider>
-            <MainApp />
-          </ToastProvider>
+        <AuthContext.Provider value={{ user:authState.user, role:authState.role, onLogout:handleLogout }}>
+          <BrandingContext.Provider value={branding}>
+            <ToastProvider>
+              <MainApp/>
+            </ToastProvider>
+          </BrandingContext.Provider>
         </AuthContext.Provider>
       );
     }
 
-    // ─── Mount (async — fetches Firebase config securely before render) ─────
+    // ═══════════════════════════════════════════════════════════════════
+    // BOOT — /api/config → Firebase init → branding → render
+    // ═══════════════════════════════════════════════════════════════════
     (async function () {
+      // 1. Fetch Firebase config from Vercel serverless function
+      let initError = null;
       try {
         const res = await fetch('/api/config');
-        if (res.ok) {
-          window._fbConfig = await res.json();
-        } else {
-          console.warn('Firebase config API error:', res.status, '— running in local-only mode.');
+        if (!res.ok) {
+          const body = await res.json().catch(()=>({}));
+          throw new Error(`/api/config returned ${res.status}: ${body.error||'Unknown error'}`);
         }
-      } catch (e) {
-        console.warn('Could not reach /api/config — running in local-only mode.', e);
+        const config = await res.json();
+        if (firebase.apps.length === 0) firebase.initializeApp(config);
+      } catch(err) {
+        initError = err.message;
+        console.error('Firebase init failed:', err);
       }
-      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+      if (initError) {
+        ReactDOM.createRoot(document.getElementById('root')).render(<ErrorScreen error={initError}/>);
+        return;
+      }
+
+      // 2. Load branding from Firestore (non-fatal)
+      let branding = { appTitle:'Vendor Management', logoUrl:'', faviconUrl:'', contactEmail:'' };
+      try {
+        const snap = await firebase.firestore().collection('app_settings').doc('branding').get();
+        if (snap.exists) {
+          const d = snap.data();
+          branding = { appTitle:d.appTitle||branding.appTitle, logoUrl:d.logoUrl||'', faviconUrl:d.faviconUrl||'', contactEmail:d.contactEmail||'' };
+        }
+      } catch(_) { /* use defaults */ }
+
+      // Apply immediately before React paint
+      if (branding.appTitle)   document.title = branding.appTitle;
+      if (branding.faviconUrl) { const l=document.getElementById('favicon-link'); if(l) l.href=branding.faviconUrl; }
+
+      // 3. Render
+      ReactDOM.createRoot(document.getElementById('root')).render(<App branding={branding}/>);
     })();
   </script>
 </body>
