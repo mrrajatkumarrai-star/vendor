@@ -1484,14 +1484,18 @@
         return <ToastProvider><LoginScreen onLogin={handleLogin} /></ToastProvider>;
       }
 
-      // Initialize Firebase silently in the background if configured and enabled
-      const savedConfig = localStorage.getItem('vms_firebase_config');
-      const firebaseEnabled = localStorage.getItem('vms_firebase_enabled') === 'true';
-      if (firebaseEnabled && savedConfig && firebase.apps.length === 0) {
+      // ── Firebase config (loaded securely from /api/config at runtime) ─────
+      // Keys are stored in Vercel Environment Variables — never in source code.
+      const FIREBASE_CONFIG = window._fbConfig || null;
+
+      // Auto-initialize Firebase using the securely fetched config
+      if (FIREBASE_CONFIG && firebase.apps.length === 0) {
         try {
-          firebase.initializeApp(JSON.parse(savedConfig));
+          firebase.initializeApp(FIREBASE_CONFIG);
+          localStorage.setItem('vms_firebase_config', JSON.stringify(FIREBASE_CONFIG));
+          localStorage.setItem('vms_firebase_enabled', 'true');
         } catch (e) {
-          console.error('Silent Firebase init failed:', e);
+          console.error('Firebase init failed:', e);
         }
       }
 
@@ -1504,8 +1508,20 @@
       );
     }
 
-    // ─── Mount ───────────────────────────────────────────────────────
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    // ─── Mount (async — fetches Firebase config securely before render) ─────
+    (async function () {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          window._fbConfig = await res.json();
+        } else {
+          console.warn('Firebase config API error:', res.status, '— running in local-only mode.');
+        }
+      } catch (e) {
+        console.warn('Could not reach /api/config — running in local-only mode.', e);
+      }
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    })();
   </script>
 </body>
 </html>
